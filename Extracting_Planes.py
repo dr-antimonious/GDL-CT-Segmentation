@@ -1,5 +1,4 @@
 import nibabel as nib
-import matplotlib.pyplot as plt
 import os
 import numpy as np
 from tqdm import tqdm
@@ -52,11 +51,3 @@ for image in tqdm(FILES):
                 array = np.append(array, img[j, :, i])
 
         np.save(DATASET_PATH + 'AXIAL\\' + category + identifier + '_' + str(i), array)
-
-# img = nib.load(DATASET_PATH + FILES[0]).get_fdata()
-# plt.imshow(img[img.shape[0]//2, :, :])
-# plt.figure()
-# plt.imshow(img[:, img.shape[1]//2, :])
-# plt.figure()
-# plt.imshow(img[:, :, img.shape[2]//2])
-# plt.show()
