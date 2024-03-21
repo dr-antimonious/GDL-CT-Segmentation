@@ -1,53 +1,60 @@
 import nibabel as nib
-import os
 import numpy as np
 from tqdm import tqdm
+import pandas as pd
 
-# DATASET_PATH = "C:\\Users\\leotu\\Downloads\\ImageCHD_dataset\\ImageCHD_dataset\\"
-DATASET_PATH = "D:\\ImageCHD_dataset\\ImageCHD_dataset\\"
+DATASET_PATH = "D:\\ImageCHD_dataset\\"
+METADATA = pd.read_csv("D:\\ImageCHD_dataset\\metadata.csv")
 
-tempfiles = os.listdir(DATASET_PATH)
-tempfiles.remove("imageCHD_dataset_info.xlsx")
-tempfiles.remove("AXIAL")
-tempfiles.remove("CORONAL")
-tempfiles.remove("SAGITTAL")
-FILES = tempfiles
-
-for image in tqdm(FILES):
-    img = nib.load(DATASET_PATH + image).get_fdata()
-    img_name = image.split('_')
-    identifier = img_name[1]
-    category = img_name[2].split('.')[0].upper() + 'S\\'
+for id in tqdm(METADATA['index'].to_numpy()):
+    img = nib.load(DATASET_PATH + 'chd_' + id + '_image.nii.gz').get_fdata()
+    label = nib.load(DATASET_PATH + 'chd_' + id + '_label.nii.gz').get_fdata()
+    label[:, :, :][label > 7] = 0
     
     for i in range(0, img.shape[0]):
-        array = np.array([])
+        img_array = np.array([], dtype = np.uint16)
+        label_array = np.array([], dtype = np.uint8)
 
         for j in range(0, img.shape[1]):
             if j % 2 == 1:
-                array = np.append(array, np.flip(img[i, j, :]))
+                img_array = np.append(img_array, np.flip(img[i, j, :]))
+                label_array = np.append(label_array, np.flip(label[i, j, :]))
             else:
-                array = np.append(array, img[i, j, :])
+                img_array = np.append(img_array, img[i, j, :])
+                label_array = np.append(label_array, label[i, j, :])
 
-        np.save(DATASET_PATH + 'SAGITTAL\\' + category + identifier + '_' + str(i), array)
+        np.savez_compressed(DATASET_PATH + 'SAGITTAL\\' + id + '_' + str(i) + '.npz',
+                            image = img_array,
+                            label = label_array)
 
     for i in range(0, img.shape[1]):
-        array = np.array([])
+        img_array = np.array([], dtype = np.uint16)
+        label_array = np.array([], dtype = np.uint8)
 
         for j in range(0, img.shape[0]):
             if j % 2 == 1:
-                array = np.append(array, np.flip(img[j, i, :]))
+                img_array = np.append(img_array, np.flip(img[j, i, :]))
+                label_array = np.append(label_array, np.flip(label[j, i, :]))
             else:
-                array = np.append(array, img[j, i, :])
+                img_array = np.append(img_array, img[j, i, :])
+                label_array = np.append(label_array, label[j, i, :])
         
-        np.save(DATASET_PATH + 'CORONAL\\' + category + identifier + '_' + str(i), array)
+        np.savez_compressed(DATASET_PATH + 'CORONAL\\' + id + '_' + str(i) + '.npz',
+                            image = img_array,
+                            label = label_array)
     
     for i in range(0, img.shape[2]):
-        array = np.array([])
+        img_array = np.array([], dtype = np.uint16)
+        label_array = np.array([], dtype = np.uint8)
 
         for j in range(0, img.shape[0]):
             if j % 2 == 1:
-                array = np.append(array, np.flip(img[j, :, i]))
+                img_array = np.append(img_array, np.flip(img[j, :, i]))
+                label_array = np.append(label_array, np.flip(label[j, :, i]))
             else:
-                array = np.append(array, img[j, :, i])
+                img_array = np.append(img_array, img[j, :, i])
+                label_array = np.append(label_array, label[j, :, i])
 
-        np.save(DATASET_PATH + 'AXIAL\\' + category + identifier + '_' + str(i), array)
+        np.savez_compressed(DATASET_PATH + 'AXIAL\\' + id + '_' + str(i) + '.npz',
+                            image = img_array,
+                            label = label_array)
