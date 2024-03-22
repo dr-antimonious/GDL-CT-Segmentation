@@ -1,6 +1,7 @@
 import pandas as pd
 import nibabel as nib
 from random import sample
+from tqdm import tqdm
 from Excel_Processing import ProcessSpreadsheets
 
 DATASET_INFO_PATH = "C:\\Users\\leotu\\OneDrive\\Documents\\ImageCHD_dataset\\imageCHD_dataset_info.xlsx"
@@ -28,7 +29,7 @@ train = list()
 evaluation = list()
 test = list()
 
-for index, row in dataset_info.iterrows():
+for index, row in tqdm(dataset_info.iterrows()):
     temp = row.copy(deep = True)
     ax_c = temp['Axial_count']
     temp = temp.rename({'Axial_count': 'Adjacency_count'})
@@ -54,36 +55,121 @@ for index, row in dataset_info.iterrows():
         temp_axial.append(temp.copy(deep = True))
     
     new_train = sample(temp_sagittal, k = round(512*0.7))
-    temp_sagittal = list(filter(lambda i: , temp_sagittal))
-    train.append(new_train)
+    tmp = list()
+
+    good = False
+    for sag in temp_sagittal:
+        good = True
+        for tr in new_train:
+            if sag.equals(tr):
+                good = False
+                break
+        if good:
+            tmp.append(sag)
+    
+    temp_sagittal = tmp.copy()
+    for tr in new_train:
+        train.append(tr)
 
     new_train = sample(temp_coronal, k = round(512*0.7))
-    temp_coronal = list(filter(lambda i: i not in new_train, temp_coronal))
-    train.append(new_train)
+    tmp = list()
+
+    good = False
+    for cor in temp_coronal:
+        good = True
+        for tr in new_train:
+            if cor.equals(tr):
+                good = False
+                break
+        if good:
+            tmp.append(cor)
+    
+    temp_coronal = tmp.copy()
+    for tr in new_train:
+        train.append(tr)
 
     new_train = sample(temp_axial, k = round(ax_c*0.7))
-    temp_axial = list(filter(lambda i: i not in new_train, temp_axial))
-    train.append(new_train)
+    tmp = list()
+
+    good = False
+    for ax in temp_axial:
+        good = True
+        for tr in new_train:
+            if ax.equals(tr):
+                good = False
+                break
+        if good:
+            tmp.append(ax)
+    
+    temp_axial = tmp.copy()
+    for tr in new_train:
+        train.append(tr)
 
     new_eval = sample(temp_sagittal, k = round(512*0.2))
-    temp_sagittal = list(filter(lambda i: i not in new_eval, temp_sagittal))
-    evaluation.append(new_eval)
+    tmp = list()
+
+    good = False
+    for sag in temp_sagittal:
+        good = True
+        for ev in new_eval:
+            if sag.equals(ev):
+                good = False
+                break
+        if good:
+            tmp.append(sag)
+    
+    temp_sagittal = tmp.copy()
+    for ev in new_eval:
+        evaluation.append(ev)
 
     new_eval = sample(temp_coronal, k = round(512*0.2))
-    temp_coronal = list(filter(lambda i: i not in new_eval, temp_coronal))
-    evaluation.append(new_eval)
+    tmp = list()
+
+    good = False
+    for cor in temp_coronal:
+        good = True
+        for ev in new_eval:
+            if cor.equals(ev):
+                good = False
+                break
+        if good:
+            tmp.append(cor)
+    
+    temp_coronal = tmp.copy()
+    for ev in new_eval:
+        evaluation.append(ev)
 
     new_eval = sample(temp_axial, k = round(ax_c*0.2))
-    temp_axial = list(filter(lambda i: i not in new_eval, temp_axial))
-    evaluation.append(new_eval)
+    tmp = list()
 
-    test.append(temp_sagittal)
-    test.append(temp_coronal)
-    test.append(temp_axial)
+    good = False
+    for ax in temp_axial:
+        good = True
+        for ev in new_eval:
+            if ax.equals(ev):
+                good = False
+                break
+        if good:
+            tmp.append(ax)
+    
+    temp_axial = tmp.copy()
+    for ev in new_eval:
+        evaluation.append(ev)
+
+    for te in temp_sagittal:
+        test.append(te)
+    for te in temp_coronal:
+        test.append(te)
+    for te in temp_axial:
+        test.append(te)
 
 train_dataset = pd.DataFrame(train).reset_index().drop('level_0', axis = 1)
 eval_dataset = pd.DataFrame(evaluation).reset_index().drop('level_0', axis = 1)
 test_dataset = pd.DataFrame(test).reset_index().drop('level_0', axis = 1)
+
+print("Train: ", str(train_dataset.__len__()))
+print("Eval: ", str(eval_dataset.__len__()))
+print("Test: ", str(test_dataset.__len__()))
 
 try:
     train_dataset.to_csv(path_or_buf = "C:\\Users\\leotu\\OneDrive\\Documents\\ImageCHD_dataset\\train_dataset_info.csv",

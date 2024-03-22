@@ -1,4 +1,5 @@
 import numpy as np
+from tqdm import tqdm
 
 def Calculate_Index(i: int, j: int, n_cols: int) -> int:
     return n_cols * i + j * (i % 2 == 0) + (n_cols - 1 - j) * (i % 2 == 1)
@@ -37,3 +38,14 @@ def Generate_Adj_Matrix(n_cols: int) -> np.ndarray:
             index = index + 8 if i % 2 == 0 else index - 8
 
     return np.array([row_array, col_array], dtype = np.uint32)
+
+def Generate_All_Adj_Matrices(n_cols_arr: np.ndarray) -> bool:
+    try:
+        for n_cols in tqdm(n_cols_arr):
+            adj_mat = Generate_Adj_Matrix(n_cols = n_cols)
+            np.save(file = "C:\\Users\\leotu\\OneDrive\\Documents\\ImageCHD_dataset\\ADJACENCY\\Adj_Mat_" \
+                    + str(n_cols) + ".npy", arr = adj_mat)
+        return True
+    except Exception as e:
+        print(e)
+        return False
