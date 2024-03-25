@@ -1,60 +1,60 @@
-import nibabel as nib
-import numpy as np
-from tqdm import tqdm
-import pandas as pd
+from nibabel import load
+from numpy import ndarray, array, uint16, uint8, append, flip
 
-DATASET_PATH = "D:\\ImageCHD_dataset\\"
-METADATA = pd.read_csv("D:\\ImageCHD_dataset\\metadata.csv")
-
-for id in tqdm(METADATA['index'].to_numpy()):
-    img = nib.load(DATASET_PATH + 'chd_' + id + '_image.nii.gz').get_fdata()
-    label = nib.load(DATASET_PATH + 'chd_' + id + '_label.nii.gz').get_fdata()
-    label[:, :, :][label > 7] = 0
-    
-    for i in range(0, img.shape[0]):
-        img_array = np.array([], dtype = np.uint16)
-        label_array = np.array([], dtype = np.uint8)
-
-        for j in range(0, img.shape[1]):
-            if j % 2 == 1:
-                img_array = np.append(img_array, np.flip(img[i, j, :]))
-                label_array = np.append(label_array, np.flip(label[i, j, :]))
-            else:
-                img_array = np.append(img_array, img[i, j, :])
-                label_array = np.append(label_array, label[i, j, :])
-
-        np.savez_compressed(DATASET_PATH + 'SAGITTAL\\' + id + '_' + str(i) + '.npz',
-                            image = img_array,
-                            label = label_array)
-
-    for i in range(0, img.shape[1]):
-        img_array = np.array([], dtype = np.uint16)
-        label_array = np.array([], dtype = np.uint8)
-
-        for j in range(0, img.shape[0]):
-            if j % 2 == 1:
-                img_array = np.append(img_array, np.flip(img[j, i, :]))
-                label_array = np.append(label_array, np.flip(label[j, i, :]))
-            else:
-                img_array = np.append(img_array, img[j, i, :])
-                label_array = np.append(label_array, label[j, i, :])
+def Convert_To_Graph(image: ndarray, label: ndarray) -> tuple[ndarray, ndarray]:
+    r"""
+        Arguments:
+            image (numpy.ndarray): Source coronary-CT image.
+            label (numpy.ndarray): Ground truth segmentation.
         
-        np.savez_compressed(DATASET_PATH + 'CORONAL\\' + id + '_' + str(i) + '.npz',
-                            image = img_array,
-                            label = label_array)
-    
-    for i in range(0, img.shape[2]):
-        img_array = np.array([], dtype = np.uint16)
-        label_array = np.array([], dtype = np.uint8)
+        Returns:
+            out (tuple[numpy.ndarray, numpy.ndarray]): \
+            Source coronary-CT image and ground truth \
+            segmentation as graphs.
+    """
+    img_array = array([], dtype = uint16)
+    label_array = array([], dtype = uint8)
+    for i in range(0, image.shape[0]):
+        if i % 2 == 1:
+            img_array = append(img_array, flip(image[i, :]))
+            label_array = append(label_array, flip(label[i, :]))
+        else:
+            img_array = append(img_array, image[i, :])
+            label_array = append(label_array, label[i, :])
+    return (img_array, label_array)
 
-        for j in range(0, img.shape[0]):
-            if j % 2 == 1:
-                img_array = np.append(img_array, np.flip(img[j, :, i]))
-                label_array = np.append(label_array, np.flip(label[j, :, i]))
-            else:
-                img_array = np.append(img_array, img[j, :, i])
-                label_array = np.append(label_array, label[j, :, i])
-
-        np.savez_compressed(DATASET_PATH + 'AXIAL\\' + id + '_' + str(i) + '.npz',
-                            image = img_array,
-                            label = label_array)
+def Extract_And_Convert(path_to_image: str, path_to_label: str,
+                        plane_type: str, plane_index: int) \
+                        -> tuple[ndarray, ndarray]:
+    r"""
+        Arguments:
+            path_to_image (string): Full path to the \
+            coronary-CT .nii.gz file.
+            path_to_label (string): Full path to the \
+            segmentation label .nii.gz file.
+            plane_type (string): One-character string \
+            with a value of 'A', 'C', or 'S'.
+            plane_index (int): Index of plane to be \
+            extracted from the image and label.
+        
+        Returns:
+            out (tuple[numpy.ndarray, numpy.ndarray]): \
+            Source coronary-CT image and ground truth \
+            segmentation as graphs.
+    """
+    match plane_type:
+        case 'A': # Axial plane
+            return Convert_To_Graph(image = load(path_to_image)\
+                                    .get_fdata()[:, :, plane_index],
+                                    label = load(path_to_label)\
+                                    .get_fdata()[:, :, plane_index])
+        case 'C': # Coronal plane
+            return Convert_To_Graph(image = load(path_to_image)\
+                                    .get_fdata()[:, plane_index, :],
+                                    label = load(path_to_label)\
+                                    .get_fdata()[:, plane_index, :])
+        case 'S': # Sagittal plane
+            return Convert_To_Graph(image = load(path_to_image)\
+                                    .get_fdata()[plane_index, :, :],
+                                    label = load(path_to_label)\
+                                    .get_fdata()[plane_index, :, :])
