@@ -1,5 +1,6 @@
 from nibabel import load
-from numpy import ndarray, array, uint16, uint8, append, flip
+from numpy import ndarray, array, int32, uint8, append, flip
+from matplotlib import pyplot as plt
 
 def Convert_To_Graph(image: ndarray, label: ndarray) -> tuple[ndarray, ndarray]:
     r"""
@@ -12,8 +13,14 @@ def Convert_To_Graph(image: ndarray, label: ndarray) -> tuple[ndarray, ndarray]:
             Source coronary-CT image and ground truth \
             segmentation as graphs.
     """
-    img_array = array([], dtype = uint16)
+    img_array = array([], dtype = int32)
     label_array = array([], dtype = uint8)
+
+    plt.imshow(image, cmap = 'gray')
+    plt.figure()
+    plt.imshow(label, cmap = 'gray')
+    plt.show()
+
     for i in range(0, image.shape[0]):
         if i % 2 == 1:
             img_array = append(img_array, flip(image[i, :]))
@@ -21,6 +28,8 @@ def Convert_To_Graph(image: ndarray, label: ndarray) -> tuple[ndarray, ndarray]:
         else:
             img_array = append(img_array, image[i, :])
             label_array = append(label_array, label[i, :])
+            
+    label_array[label_array > 7] = 0
     return (img_array, label_array)
 
 def Extract_And_Convert(path_to_image: str, path_to_label: str,

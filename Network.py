@@ -45,18 +45,18 @@ class CHD_GNN(Module):
                 out (Tensor): Segmentation result as a graph.
         """
         out = self.gat_1_to_1(x = x, edge_index = adj_matrix)
-        out = self.gat_1_to_2(x = x, edge_index = adj_matrix)
+        out = self.gat_1_to_2(x = out, edge_index = adj_matrix)
         out = out.tanh()
 
-        out = self.gat_2_to_2_n1(x = x, edge_index = adj_matrix)
-        out = self.gat_2_to_2_n2(x = x, edge_index = adj_matrix)
-        out = self.gat_2_to_4(x = x, edge_index = adj_matrix)
+        out = self.gat_2_to_2_n1(x = out, edge_index = adj_matrix)
+        out = self.gat_2_to_2_n2(x = out, edge_index = adj_matrix)
+        out = self.gat_2_to_4(x = out, edge_index = adj_matrix)
         out = out.tanh()
 
-        out = self.gat_4_to_4_n1(x = x, edge_index = adj_matrix)
-        out = self.gat_4_to_4_n2(x = x, edge_index = adj_matrix)
-        out = self.gat_4_to_8(x = x, edge_index = adj_matrix)
+        out = self.gat_4_to_4_n1(x = out, edge_index = adj_matrix)
+        out = self.gat_4_to_4_n2(x = out, edge_index = adj_matrix)
+        out = self.gat_4_to_8(x = out, edge_index = adj_matrix)
         out = out.tanh()
 
-        out = self.gat_8_to_8(x = x, edge_index = adj_matrix)
+        out = self.gat_8_to_8(x = out, edge_index = adj_matrix)
         return out
