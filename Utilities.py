@@ -49,7 +49,7 @@ class CHD_Dataset(Dataset):
     self.image_dir = directory + 'IMAGES/'
     self.label_dir = directory + 'LABELS/'
     self.device = device('cuda')
-    self.load_adjacency(directory + 'ADJACENCY/')
+    self.__load_adjacency__(directory + 'ADJACENCY/')
 
   def __len__(self):
     return len(self.metadata)
@@ -77,7 +77,7 @@ class CHD_Dataset(Dataset):
   def get(self, idx):
     return self.__getitem__(idx)
 
-  def load_adjacency(self, path):
+  def __load_adjacency__(self, path):
     files = listdir(path)
     self.adjacency = {}
     for f in files:

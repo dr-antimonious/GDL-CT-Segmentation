@@ -32,6 +32,7 @@ out = testing(sample.x, sample.edge_index)
 print(out.shape)
 print(out.type())
 _, label = max(out, dim = 1)
+print(label)
 print(label.shape)
 print(label.type())
 

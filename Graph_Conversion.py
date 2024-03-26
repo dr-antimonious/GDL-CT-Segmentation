@@ -4,7 +4,7 @@ from numpy import ndarray, array, int32, append, flip
 def Convert_To_Image(tensor: LongTensor, adj_count: int) -> ndarray:
     r"""
         Arguments:
-            tensor (torch.cuda.FloatTensor): Graph as tensor.
+            tensor (torch.cuda.LongTensor): Graph as tensor.
             
         Returns:
             out (numpy.ndarray): Converted image.

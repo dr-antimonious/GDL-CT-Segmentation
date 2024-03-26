@@ -1,6 +1,5 @@
 from nibabel import load
 from numpy import ndarray, array, int32, uint8, append, flip
-from matplotlib import pyplot as plt
 
 def Convert_To_Graph(image: ndarray, label: ndarray) -> tuple[ndarray, ndarray]:
     r"""
@@ -9,17 +8,10 @@ def Convert_To_Graph(image: ndarray, label: ndarray) -> tuple[ndarray, ndarray]:
             label (numpy.ndarray): Ground truth segmentation.
         
         Returns:
-            out (tuple[numpy.ndarray, numpy.ndarray]): \
-            Source coronary-CT image and ground truth \
-            segmentation as graphs.
+            out (tuple[numpy.ndarray, numpy.ndarray]): Source coronary-CT image and ground truth segmentation as graphs.
     """
     img_array = array([], dtype = int32)
     label_array = array([], dtype = uint8)
-
-    plt.imshow(image, cmap = 'gray')
-    plt.figure()
-    plt.imshow(label, cmap = 'gray')
-    plt.show()
 
     for i in range(0, image.shape[0]):
         if i % 2 == 1:
@@ -37,19 +29,13 @@ def Extract_And_Convert(path_to_image: str, path_to_label: str,
                         -> tuple[ndarray, ndarray]:
     r"""
         Arguments:
-            path_to_image (string): Full path to the \
-            coronary-CT .nii.gz file.
-            path_to_label (string): Full path to the \
-            segmentation label .nii.gz file.
-            plane_type (string): One-character string \
-            with a value of 'A', 'C', or 'S'.
-            plane_index (int): Index of plane to be \
-            extracted from the image and label.
+            path_to_image (str): Full path to the coronary-CT .nii.gz file.
+            path_to_label (str): Full path to the segmentation label .nii.gz file.
+            plane_type (str): One-character string with a value of 'A', 'C', or 'S'.
+            plane_index (int): Index of plane to be extracted from the image and label.
         
         Returns:
-            out (tuple[numpy.ndarray, numpy.ndarray]): \
-            Source coronary-CT image and ground truth \
-            segmentation as graphs.
+            out (tuple[numpy.ndarray, numpy.ndarray]): Source coronary-CT image and ground truth segmentation as graphs.
     """
     match plane_type:
         case 'A': # Axial plane
