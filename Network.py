@@ -32,8 +32,7 @@ class CHD_GNN(Module):
         self.gat_4_to_8 =       GATv2Conv(4, 8,
                                           fill_value = 'sum')
         self.gat_8_to_8 =       GATv2Conv(8, 8,
-                                          fill_value = 'sum',
-                                          dropout = 0.25)
+                                          fill_value = 'sum')
 
     def forward(self, x, adj_matrix):
         r"""

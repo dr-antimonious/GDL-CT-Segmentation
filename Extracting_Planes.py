@@ -1,5 +1,6 @@
 from nibabel import load
-from numpy import ndarray, array, int32, uint8, append, flip
+from numpy import ndarray, array, int32, uint8
+from time import time
 
 def Convert_To_Graph(image: ndarray, label: ndarray) -> tuple[ndarray, ndarray]:
     r"""
@@ -10,19 +11,19 @@ def Convert_To_Graph(image: ndarray, label: ndarray) -> tuple[ndarray, ndarray]:
         Returns:
             out (tuple[numpy.ndarray, numpy.ndarray]): Source coronary-CT image and ground truth segmentation as graphs.
     """
-    img_array = array([], dtype = int32)
-    label_array = array([], dtype = uint8)
+    # start = time()
+    img = array(image, dtype = int32)
+    lab = array(label, dtype = uint8)
+    img[1::2, :] = image[1::2, ::-1]
+    lab[1::2, :] = label[1::2, ::-1]
+    
+    img = img.flatten()
+    img = img.reshape((img.shape[0], 1))
 
-    for i in range(0, image.shape[0]):
-        if i % 2 == 1:
-            img_array = append(img_array, flip(image[i, :]))
-            label_array = append(label_array, flip(label[i, :]))
-        else:
-            img_array = append(img_array, image[i, :])
-            label_array = append(label_array, label[i, :])
-            
-    label_array[label_array > 7] = 0
-    return (img_array, label_array)
+    lab[lab > 7] = 0
+    lab = lab.flatten()
+    # print('Convert_To_Graph time: ', time() - start)
+    return (img, lab)
 
 def Extract_And_Convert(path_to_image: str, path_to_label: str,
                         plane_type: str, plane_index: int) \
@@ -37,19 +38,16 @@ def Extract_And_Convert(path_to_image: str, path_to_label: str,
         Returns:
             out (tuple[numpy.ndarray, numpy.ndarray]): Source coronary-CT image and ground truth segmentation as graphs.
     """
+    # start = time()
     match plane_type:
         case 'A': # Axial plane
-            return Convert_To_Graph(image = load(path_to_image)\
-                                    .get_fdata()[:, :, plane_index],
-                                    label = load(path_to_label)\
-                                    .get_fdata()[:, :, plane_index])
+            image = load(path_to_image).dataobj[:, :, plane_index]
+            label = load(path_to_label).dataobj[:, :, plane_index]
         case 'C': # Coronal plane
-            return Convert_To_Graph(image = load(path_to_image)\
-                                    .get_fdata()[:, plane_index, :],
-                                    label = load(path_to_label)\
-                                    .get_fdata()[:, plane_index, :])
+            image = load(path_to_image).dataobj[:, plane_index, :]
+            label = load(path_to_label).dataobj[:, plane_index, :]
         case 'S': # Sagittal plane
-            return Convert_To_Graph(image = load(path_to_image)\
-                                    .get_fdata()[plane_index, :, :],
-                                    label = load(path_to_label)\
-                                    .get_fdata()[plane_index, :, :])
+            image = load(path_to_image).dataobj[plane_index, :, :]
+            label = load(path_to_label).dataobj[plane_index, :, :]
+    # print('Nibabel loading time: ', time() - start)
+    return Convert_To_Graph(image, label)

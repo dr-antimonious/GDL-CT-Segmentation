@@ -1,10 +1,11 @@
-from torch import Tensor, device, FloatTensor
+from torch import Tensor, FloatTensor, LongTensor
 from torch_geometric.data import Data
 from torch.utils.data import Dataset
-from torch import is_tensor, from_numpy
+from torch import is_tensor
 from numpy import load, array, int64
 from os import listdir
 from Extracting_Planes import Extract_And_Convert
+from time import time
 
 class PairData(Data):
   r"""
@@ -13,7 +14,7 @@ class PairData(Data):
 
   def __inc__(self, key, value, *args, **kwargs):
       if key == 'edge_index':
-          return self.image.size(0)
+          return self.x.size(0)
       return super().__inc__(key, value, *args, **kwargs)
   
   def __init__(self,
@@ -38,18 +39,18 @@ class CHD_Dataset(Dataset):
     PyTorch dataset class used for the ImageCHD dataset.
   """
 
-  def __init__(self, metadata, directory):
+  def __init__(self, metadata, directory, adjacency):
     r"""
     Arguments:
         metadata (DataFrame): Pandas DataFrame containing dataset information.
         directory (string):   Path to the directory of the dataset.
+        adjacency (Dictionary): Dictionary of adjacency matrices.
     """
     self.metadata = metadata
     self.directory = directory
     self.image_dir = directory + 'IMAGES/'
     self.label_dir = directory + 'LABELS/'
-    self.device = device('cuda')
-    self.__load_adjacency__(directory + 'ADJACENCY/')
+    self.adjacency = adjacency
 
   def __len__(self):
     return len(self.metadata)
@@ -64,21 +65,25 @@ class CHD_Dataset(Dataset):
                                         + str(self.metadata['index'][idx]) + '.nii.gz',
                                        plane_type = self.metadata['Type'][idx],
                                        plane_index = self.metadata['Indice'][idx])
-    
+    # start = time()
     adj_matrix = self.adjacency[str(self.metadata['Adjacency_count'][idx])]
+    # print('Adj_matrix assign time: ', time() - start)
 
-    sample = PairData(x = from_numpy(image).type_as(FloatTensor()).to(self.device).reshape((image.shape[0], 1)),
-                      edge_index = from_numpy(adj_matrix).to(self.device),
-                      y = from_numpy(label).type_as(FloatTensor()).to(self.device).reshape((label.shape[0], 1)),
+    # start = time()
+    sample = PairData(x = FloatTensor(image),
+                      edge_index = LongTensor(adj_matrix),
+                      y = LongTensor(label),
                       adj_count = self.metadata['Adjacency_count'][idx])
+    # print('Sample preparation time: ', time() - start)
     
     return sample
 
   def get(self, idx):
     return self.__getitem__(idx)
-
-  def __load_adjacency__(self, path):
-    files = listdir(path)
-    self.adjacency = {}
-    for f in files:
-      self.adjacency[f.split('_')[2].split('.')[0]] = array(load(path + f), dtype = int64)
+  
+def __Load_Adjacency__(path):
+  files = listdir(path)
+  adjacency = {}
+  for f in files:
+    adjacency[f.split('_')[2].split('.')[0]] = array(load(path + f), dtype = int64)
+  return adjacency
