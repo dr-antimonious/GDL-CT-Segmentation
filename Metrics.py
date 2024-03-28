@@ -1,10 +1,10 @@
-from torch import LongTensor, IntTensor, isin, argwhere
+from torch import LongTensor, isin, argwhere
 from numpy import ndarray, array, append
 
-def __Accuracy__(truth: IntTensor, test: LongTensor, value: int) -> float:
+def __Accuracy__(truth: LongTensor, test: LongTensor, value: int) -> float:
     r"""
         Arguments:
-            truth (torch.IntTensor): Ground truth segmentation.
+            truth (torch.LongTensor): Ground truth segmentation.
             test (torch.LongTensor): GNN segmentation result.
             value (int): Value for which the accuracy will be returned.
         
@@ -15,10 +15,10 @@ def __Accuracy__(truth: IntTensor, test: LongTensor, value: int) -> float:
     count = (test[mask] == value).sum().item()
     return count / mask.shape[0] if mask.shape[0] != 0 else -1
 
-def __Calculate_Accuracy__(truth: IntTensor, test: LongTensor) -> ndarray:
+def __Calculate_Accuracy__(truth: LongTensor, test: LongTensor) -> ndarray:
     r"""
         Arguments:
-            truth (torch.IntTensor): Ground truth segmentation.
+            truth (torch.LongTensor): Ground truth segmentation.
             test (torch.LongTensor): GNN segmentation result.
         
         Returns:
@@ -33,10 +33,10 @@ def __Average_Accuracy__(acc_arr: ndarray) -> float:
     return acc_arr[acc_arr > -1].sum() / acc_arr[acc_arr > -1].shape[0] \
         if acc_arr[acc_arr > -1].shape[0] != 0 else -1
 
-def Accuracy_Util(truth: IntTensor, test: LongTensor) -> ndarray:
+def Accuracy_Util(truth: LongTensor, test: LongTensor) -> ndarray:
     r"""
         Arguments:
-            truth (torch.IntTensor): Ground truth segmentation.
+            truth (torch.LongTensor): Ground truth segmentation.
             test (torch.LongTensor): GNN segmentation result.
         
         Returns:
