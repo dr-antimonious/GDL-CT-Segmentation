@@ -35,6 +35,7 @@ BATCH_SIZE      = 32
 NUM_WORKERS     = 8
 PREFETCH_FACTOR = 4
 EPOCHS          = 120
+METRIC_COUNT    = 45
 
 PRODUCTION_STR  = getenv('GDL_CT_SEG_PROD')
 DIRECTORY       = getenv('GDL_CT_SEG_DIR')
@@ -223,16 +224,16 @@ def main():
             decay_cycle_len *= TMULT
             next_decay += decay_cycle_len
 
-        train_metrics = npyzeros(36, dtype = double)
-        train_counts = npyzeros(36, dtype = uint16)
+        train_metrics = npyzeros(METRIC_COUNT, dtype = double)
+        train_counts = npyzeros(METRIC_COUNT, dtype = uint16)
         
         will_validate = PRODUCTION and ((epoch < 15) or \
             ((epoch < 31) and ((epoch - 14) % 2 == 0)) or \
             ((epoch - 30) % 3 == 0))
         
         if will_validate:
-            eval_metrics = npyzeros(36, dtype = double)
-            eval_counts = npyzeros(36, dtype = uint16)
+            eval_metrics = npyzeros(METRIC_COUNT, dtype = double)
+            eval_counts = npyzeros(METRIC_COUNT, dtype = uint16)
 
         print('--------------------------------------------------')
         print('Epoch ', epoch + 1)
