@@ -1,6 +1,5 @@
 from torch import cat, Tensor
 from torch.amp.autocast_mode import autocast
-from torch.cuda import empty_cache
 from torch.nn import Module, ReLU, Linear, ModuleList
 from torch_geometric.nn import PNAConv, BatchNorm, Sequential
 
@@ -63,13 +62,11 @@ class CHD_GNN(Module):
                 edge_index = edge_index
             ))
         
-        empty_cache()
         return out
     
     @autocast('cuda')
     def decode(self, x: list[Tensor], edge_index: Tensor) -> Tensor:
         out = x.pop()
-        empty_cache()
 
         for i in range(4, len(self.layers) - 1):
             out = self.layers[i].forward(
@@ -77,12 +74,10 @@ class CHD_GNN(Module):
                     if i != len(self.layers) - 1 else out,
                 edge_index = edge_index
             )
-            empty_cache()
 
         out = self.layers[len(self.layers) - 1].forward(
             input = out
         )
-        empty_cache()
 
         return out
 

@@ -3,7 +3,7 @@ from torch import max as torchmax
 from torch import Tensor, FloatTensor, LongTensor, save, no_grad, zeros, long, bincount, sum
 from torch.amp.autocast_mode import autocast
 from torch.amp.grad_scaler import GradScaler
-from torch.cuda import is_available, empty_cache, device_count, stream, default_stream, Stream
+from torch.cuda import is_available, device_count, stream, default_stream, Stream
 from torch.nn import CrossEntropyLoss
 from torch.nn.functional import softmax, one_hot
 from torch.optim import AdamW
@@ -142,7 +142,6 @@ def main():
                     scaler.update()
                     optimizer.zero_grad(set_to_none = True)
             
-            empty_cache()
         return (ce_loss, d_loss, lloss)
 
     environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
@@ -153,7 +152,6 @@ def main():
     print('Torch version: ', torch_version)
     print('GPU available: ', is_available())
     print('GPU count: ', device_count())
-    empty_cache()
 
     adjacency = __Load_Adjacency__(DIRECTORY + 'ADJACENCY/')
 
@@ -345,7 +343,6 @@ def main():
             save(states, checkpoint_path)
         
         writer.flush()
-        empty_cache()
         
 if __name__ == '__main__':
     main()
