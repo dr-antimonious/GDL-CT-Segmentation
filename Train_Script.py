@@ -113,7 +113,7 @@ def main():
                 if (i > 0) and ((i % BATCH_SIZE != 0) or (train is False)):
                     (pred_labels, cel, dl, loss) = decode(stream1, model, enc_out_prev,
                                                           edge_index_prev, loss_module,
-                                                          y_prev, batch.adj_count, False)
+                                                          y_prev, batch.adj_count[0], False)
                     ce_loss += cel.item()
                     d_loss += dl.item()
                     lloss += loss.item()
@@ -130,7 +130,7 @@ def main():
               or ((i + 1) == len(dataloader)):
                 (pred_labels, cel, dl, loss) = decode(stream1, model, enc_out_prev,
                                                       edge_index_prev, loss_module,
-                                                      y_prev, batch.adj_count, True)
+                                                      y_prev, batch.adj_count[0], True)
                 ce_loss += cel.item()
                 d_loss += dl.item()
                 lloss += loss.item()
