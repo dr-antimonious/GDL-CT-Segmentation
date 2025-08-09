@@ -47,10 +47,10 @@ class CHD_GNN(Module):
         self.layers.append(self.layer(32, 64).to('cuda:0'))
 
     def create_decoder(self):
-        self.layers.append(self.layer(96, 32, 64).to('cuda:1'))
-        self.layers.append(self.layer(48, 16, 32).to('cuda:1'))
-        self.layers.append(self.layer(24, 8, 16).to('cuda:1'))
-        self.layers.append(Linear(8, 8).to('cuda:1'))
+        self.layers.append(self.layer(96, 32, 64).to('cuda:0'))
+        self.layers.append(self.layer(48, 16, 32).to('cuda:0'))
+        self.layers.append(self.layer(24, 8, 16).to('cuda:0'))
+        self.layers.append(Linear(8, 8).to('cuda:0'))
     
     @autocast('cuda')
     def encode(self, x: Tensor, edge_index: Tensor) -> list[Tensor]:
@@ -103,7 +103,5 @@ class CHD_GNN(Module):
                 out (Tensor): Segmentation result as a graph.
         """
         x = self.encode(x = x, edge_index = adj_matrix)
-        x = [xx.to('cuda:1') for xx in x]
-        adj_matrix = adj_matrix.to('cuda:1')
         x = self.decode(x = x, edge_index = adj_matrix)
         return x

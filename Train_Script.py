@@ -16,6 +16,7 @@ from torch_geometric.utils import degree
 
 from numpy import isin, argwhere, double, uint16, ndarray
 from numpy import zeros as npyzeros
+from numpy import sum as numsum
 from os import environ, getenv
 from pandas import read_csv
 from tqdm import tqdm
@@ -56,22 +57,18 @@ def main():
         dice_loss = 1. - dice_coef
         return dice_loss.mean()
     
-    def decode(stream1: Stream, model: CHD_GNN, enc_out_prev: list[Tensor],
+    def decode(model: CHD_GNN, enc_out_prev: list[Tensor],
                edge_index_prev: LongTensor, loss_module: CrossEntropyLoss,
-               y_prev: LongTensor, width: int, last: bool)-> \
+               y_prev: LongTensor, width: int) -> \
                 tuple[Tensor, Tensor, Tensor, Tensor]:
-        with stream(stream1):
-            if last:
-                stream1.synchronize()
+        preds = model.decode(enc_out_prev, edge_index_prev)
+        _, pred_labels = torchmax(preds, dim = 1)
 
-            preds = model.decode(enc_out_prev, edge_index_prev)
-            _, pred_labels = torchmax(preds, dim = 1)
-
-            preds = preds.permute((1, 0)).reshape((1, 8, 512, width))
-            y = y_prev.reshape((512, width)).unsqueeze(0)
-            ce_loss = loss_module(preds, y)
-            d_loss = Dice(preds, y)
-            loss = 0.5 * ce_loss + 0.5 * d_loss
+        preds = preds.permute((1, 0)).reshape((1, 8, 512, width))
+        y = y_prev.reshape((512, width)).unsqueeze(0)
+        ce_loss = loss_module(preds, y)
+        d_loss = Dice(preds, y)
+        loss = 0.5 * ce_loss + 0.5 * d_loss
         return (pred_labels, ce_loss, d_loss, loss)
     
     def loss_and_metrics(scaler: GradScaler|None, y_prev: LongTensor,
@@ -86,7 +83,7 @@ def main():
         mmetrics[mask] += metrics[mask]
         counts[mask] += 1
     
-    def loader_loop(train: bool, dataloader: DataLoader, stream0: Stream, stream1: Stream,
+    def loader_loop(train: bool, dataloader: DataLoader, stream0: Stream,
                     model: CHD_GNN, scaler: GradScaler|None, loss_module: CrossEntropyLoss,
                     optimizer: AdamW|None, metrics: ndarray, counts: ndarray) -> \
                         tuple[float, float, float]:
@@ -98,49 +95,26 @@ def main():
         d_loss = 0.0
         lloss = 0.0
 
-        for i, batch in enumerate(tqdm(dataloader)):
-            with autocast(device_type='cuda'):
+        for batch in tqdm(dataloader):
+            with autocast(device_type='cuda'), stream(stream0):
                 batch.x = batch.x.to('cuda:0', non_blocking = True)
                 batch.edge_index = batch.edge_index.to('cuda:0', non_blocking = True)
+                batch.y = batch.y.to('cuda:0', non_blocking = True)
+                enc_out = model.encode(batch.x, batch.edge_index)
 
-                with stream(stream0):
-                    enc_out = model.encode(batch.x, batch.edge_index)
-
-                with stream(stream1):
-                    enc_out_next = [e.to('cuda:1', non_blocking = True) for e in enc_out]
-                    edge_index_next = batch.edge_index.to('cuda:1', non_blocking = True)
-                    y_next = batch.y.to('cuda:1', non_blocking = True)
-
-                if (i > 0) and ((i % BATCH_SIZE != 0) or (train is False)):
-                    (pred_labels, cel, dl, loss) = decode(stream1, model, enc_out_prev,
-                                                          edge_index_prev, loss_module,
-                                                          y_prev, batch.adj_count[0], False)
-                    ce_loss += cel.item()
-                    d_loss += dl.item()
-                    lloss += loss.item()
-                
-                enc_out_prev = enc_out_next
-                edge_index_prev = edge_index_next
-
-            if (i > 0) and ((i % BATCH_SIZE != 0) or (train is False)):
-                loss_and_metrics(scaler, y_prev, pred_labels, metrics, counts, loss)
-            
-            y_prev = y_next
-            
-            if (((i + 1) % BATCH_SIZE == 0) and train) \
-              or ((i + 1) == len(dataloader)):
-                (pred_labels, cel, dl, loss) = decode(stream1, model, enc_out_prev,
-                                                      edge_index_prev, loss_module,
-                                                      y_prev, batch.adj_count[0], True)
+                (pred_labels, cel, dl, loss) = decode(model, enc_out,
+                                                      batch.edge_index, loss_module,
+                                                      batch.y, batch.adj_count[0])
                 ce_loss += cel.item()
                 d_loss += dl.item()
                 lloss += loss.item()
-                loss_and_metrics(scaler, y_prev, pred_labels, metrics, counts, loss)
-
-                if train:
-                    scaler.step(optimizer)
-                    scaler.update()
-                    optimizer.zero_grad(set_to_none = True)
+                
+                loss_and_metrics(scaler, batch.y, pred_labels, metrics, counts, loss)
+            
+            if train:
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad(set_to_none = True)
             
         return (ce_loss, d_loss, lloss)
 
@@ -195,7 +169,7 @@ def main():
                                                          11108352000./143205882.,
                                                          11108352000./190230471.,
                                                          11108352000./82210947.,
-                                                         11108352000./67981614.]).to('cuda:1'))
+                                                         11108352000./67981614.]).to('cuda:0'))
 
     optimizer = AdamW(model.parameters(), lr = LR, weight_decay = WEIGHT_DECAY)
     scheduler = CosineAnnealingWarmRestarts(optimizer, T_0 = T0, T_mult = TMULT,
@@ -205,7 +179,6 @@ def main():
     scaler = GradScaler()
 
     stream0 = default_stream('cuda:0')
-    stream1 = default_stream('cuda:1')
 
     next_decay = T0
     decay_cycle_len = T0
@@ -238,7 +211,7 @@ def main():
 
         model.train()
         (tce_l, td_l, train_loss) = loader_loop(True, train_dataloader, stream0,
-                                                stream1, model, scaler, loss_module,
+                                                model, scaler, loss_module,
                                                 optimizer, train_metrics, train_counts)
         tce_l /= len(train_dataloader)
         td_l /= len(train_dataloader)
@@ -248,7 +221,7 @@ def main():
             model.eval()
             with no_grad(), autocast(device_type = 'cuda'):
                 (ece_l, ed_l, eval_loss) = loader_loop(False, eval_dataloader, stream0,
-                                                       stream1, model, None, loss_module,
+                                                       model, None, loss_module,
                                                        None, eval_metrics, eval_counts)
             ece_l /= len(eval_dataloader)
             ed_l /= len(eval_dataloader)
