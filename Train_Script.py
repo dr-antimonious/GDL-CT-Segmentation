@@ -343,6 +343,7 @@ def main():
             states = model.state_dict()
             save(states, checkpoint_path)
         
+        writer.flush()
         empty_cache()
         
 if __name__ == '__main__':
