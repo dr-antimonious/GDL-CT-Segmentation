@@ -1,7 +1,7 @@
 from torch import cat, Tensor
 from torch.amp.autocast_mode import autocast
 from torch.cuda import empty_cache
-from torch.nn import Module, ReLU, Linear
+from torch.nn import Module, ReLU, Linear, ModuleList
 from torch_geometric.nn import PNAConv, BatchNorm, Sequential
 
 class CHD_GNN(Module):
@@ -42,27 +42,23 @@ class CHD_GNN(Module):
         ])
     
     def create_encoder(self):
-        self.enc_layers = [
-            self.layer(1, 8).to('cuda:0'),
-            self.layer(8, 16).to('cuda:0'),
-            self.layer(16, 32).to('cuda:0'),
-            self.layer(32, 64).to('cuda:0')
-        ]
+        self.layers.append(self.layer(1, 8).to('cuda:0'))
+        self.layers.append(self.layer(8, 16).to('cuda:0'))
+        self.layers.append(self.layer(16, 32).to('cuda:0'))
+        self.layers.append(self.layer(32, 64).to('cuda:0'))
 
     def create_decoder(self):
-        self.dec_layers = [
-            self.layer(96, 32, 64).to('cuda:1'),
-            self.layer(48, 16, 32).to('cuda:1'),
-            self.layer(24, 8, 16).to('cuda:1'),
-            Linear(8, 8).to('cuda:1')
-        ]
+        self.layers.append(self.layer(96, 32, 64).to('cuda:1'))
+        self.layers.append(self.layer(48, 16, 32).to('cuda:1'))
+        self.layers.append(self.layer(24, 8, 16).to('cuda:1'))
+        self.layers.append(Linear(8, 8).to('cuda:1'))
     
     @autocast('cuda')
     def encode(self, x: Tensor, edge_index: Tensor) -> list[Tensor]:
         out = []
         
-        for i in range(len(self.enc_layers)):
-            out.append(self.enc_layers[i].forward(
+        for i in range(4):
+            out.append(self.layers[i].forward(
                 x = x if i == 0 else out[i - 1],
                 edge_index = edge_index
             ))
@@ -75,10 +71,10 @@ class CHD_GNN(Module):
         out = x.pop()
         empty_cache()
 
-        for i in range(len(self.dec_layers)):
-            out = self.dec_layers[i].forward(
+        for i in range(4, len(self.layers)):
+            out = self.layers[i].forward(
                 x = cat([x.pop(), out], dim = 1)
-                    if i != len(self.dec_layers) - 1 else out,
+                    if i != len(self.layers) - 1 else out,
                 edge_index = edge_index
             )
             empty_cache()
@@ -91,6 +87,7 @@ class CHD_GNN(Module):
         self.deg = deg
         self.aggregators = ['mean', 'min', 'max', 'std']
         self.scalers = ['identity', 'amplification', 'attenuation']
+        self.layers = ModuleList()
         self.create_encoder()
         self.create_decoder()
 
