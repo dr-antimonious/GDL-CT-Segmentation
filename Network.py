@@ -71,13 +71,18 @@ class CHD_GNN(Module):
         out = x.pop()
         empty_cache()
 
-        for i in range(4, len(self.layers)):
+        for i in range(4, len(self.layers) - 1):
             out = self.layers[i].forward(
                 x = cat([x.pop(), out], dim = 1)
                     if i != len(self.layers) - 1 else out,
                 edge_index = edge_index
             )
             empty_cache()
+
+        out = self.layers[len(self.layers) - 1].forward(
+            input = out
+        )
+        empty_cache()
 
         return out
 
