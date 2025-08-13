@@ -215,9 +215,9 @@ def main(train_dataset: CHD_Dataset, eval_dataset: CHD_Dataset|None):
         writer = SummaryWriter('GNN_Experiment')
     
     metrics_1 = MetricCollection(
-        [Accuracy(task = 'multiclass', average = None),
-         Precision(task = 'multiclass', average = None),
-         Recall(task = 'multiclass', average = None)
+        [Accuracy(task = 'multiclass', average = None, num_classes = 8),
+         Precision(task = 'multiclass', average = None, num_classes = 8),
+         Recall(task = 'multiclass', average = None, num_classes = 8)
          ]).to(RANK)
     metrics_2 = MetricCollection(
         [DiceScore(num_classes = 8, average = None, input_format = 'index'),
