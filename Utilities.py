@@ -67,7 +67,7 @@ class CHD_Dataset(InMemoryDataset):
                   y = LongTensor(label),
                   adj_count = self.metadata['Adjacency_count'][idx])
     
-    data_list = Parallel(n_jobs = 50)(delayed(process_single)(idx) for idx in range(length))
+    data_list = Parallel(n_jobs = 50, backend = 'multiprocessing')(delayed(process_single)(idx) for idx in range(length))
     self.save(data_list, self.processed_paths[0])
   
 def __Load_Adjacency__(path):
