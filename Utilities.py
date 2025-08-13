@@ -6,6 +6,19 @@ from os import listdir
 from pandas import DataFrame
 from Extracting_Planes import Extract_And_Convert
 
+def process_single(idx, metadata, adjacency, image_dir, label_dir):
+  image, label = Extract_And_Convert(path_to_image = image_dir \
+                                      + str(metadata['index'][idx]) + '.nii.gz',
+                                    path_to_label = label_dir \
+                                      + str(metadata['index'][idx]) + '.nii.gz',
+                                    plane_type = metadata['Type'][idx],
+                                    plane_index = metadata['Indice'][idx])
+  adj_matrix = adjacency[str(metadata['Adjacency_count'][idx])]
+  return Data(x = FloatTensor(image),
+              edge_index = adj_matrix,
+              y = LongTensor(label),
+              adj_count = metadata['Adjacency_count'][idx])
+
 class CHD_Dataset(InMemoryDataset):
   r"""
     PyTorch dataset class used for the ImageCHD dataset.
@@ -53,21 +66,10 @@ class CHD_Dataset(InMemoryDataset):
 
   def process(self):
     length = len(self.metadata['index'])
-
-    def process_single(idx):
-      image, label = Extract_And_Convert(path_to_image = self.image_dir \
-                                          + str(self.metadata['index'][idx]) + '.nii.gz',
-                                        path_to_label = self.label_dir \
-                                          + str(self.metadata['index'][idx]) + '.nii.gz',
-                                        plane_type = self.metadata['Type'][idx],
-                                        plane_index = self.metadata['Indice'][idx])
-      adj_matrix = self.adjacency[str(self.metadata['Adjacency_count'][idx])]
-      return Data(x = FloatTensor(image),
-                  edge_index = adj_matrix,
-                  y = LongTensor(label),
-                  adj_count = self.metadata['Adjacency_count'][idx])
     
-    data_list = Parallel(n_jobs = 50, backend = 'multiprocessing')(delayed(process_single)(idx) for idx in range(length))
+    data_list = Parallel(n_jobs = 50, backend = 'multiprocessing')(
+      delayed(process_single)(idx, self.metadata, self.adjacency, self.image_dir, self.label_dir) for idx in range(length)
+    )
     self.save(data_list, self.processed_paths[0])
   
 def __Load_Adjacency__(path):
