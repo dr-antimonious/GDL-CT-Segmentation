@@ -164,7 +164,7 @@ def main(train_dataset: CHD_Dataset, eval_dataset: CHD_Dataset|None):
 
     train_sampler = DistributedSampler(dataset = train_dataset,
                                        num_replicas = WORLD_SIZE,
-                                       rank = RANK, shuffle = True)
+                                       rank = RANK, shuffle = False)
     train_dataloader = DataLoader(dataset = train_dataset,
                                   sampler = train_sampler,
                                   batch_size = BATCH_SIZE,
