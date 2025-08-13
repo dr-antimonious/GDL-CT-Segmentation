@@ -60,8 +60,6 @@ assert DIRECTORY is not None
 PRODUCTION      = PRODUCTION_STR.lower() == 'true'
 
 def Dice(preds: Tensor, y: Tensor) -> Tensor:
-    print(preds.shape)
-    print(preds)
     probs = softmax(preds, dim = 1)[:, 1:]
     targs = one_hot(y, num_classes = 8).float()[:, 1:]
 
@@ -94,6 +92,11 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader,
             
             preds = model(x = batch.x, adj_matrix = batch.edge_index)
             _, pred_labels = torchmax(preds, dim = 1)
+
+            print(pred_labels)
+            print(pred_labels.shape)
+            print(batch.y)
+            print(batch.y.shape)
 
             cel = loss_module(preds, batch.y)
             dl = Dice(preds, batch.y)
