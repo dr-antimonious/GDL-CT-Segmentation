@@ -19,12 +19,13 @@ class CHD_Dataset(InMemoryDataset):
         directory (string):   Path to the directory of the dataset.
         adjacency (Dictionary): Dictionary of adjacency matrices.
     """
-    super().__init__(root, transform, pre_transform,
-                     pre_filter, force_reload = True)
     self.metadata: DataFrame = metadata
     self.image_dir = root + 'IMAGES/'
     self.label_dir = root + 'LABELS/'
     self.adjacency = adjacency
+
+    super().__init__(root, transform, pre_transform,
+                     pre_filter, force_reload = True)
   
   @property
   def raw_file_names(self):
