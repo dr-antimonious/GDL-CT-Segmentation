@@ -107,7 +107,7 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader,
             lloss += loss.item()
 
             metrics_1.update(preds, batch.y)
-            metrics_2.update(pred_labels, batch.y)
+            metrics_2.update(pred_labels.unsqueeze(0), batch.y.unsqueeze(0))
 
             if train:
                 scaled_loss = loss / BATCH_SIZE
