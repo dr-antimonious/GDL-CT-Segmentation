@@ -60,6 +60,8 @@ assert DIRECTORY is not None
 PRODUCTION      = PRODUCTION_STR.lower() == 'true'
 
 def Dice(preds: Tensor, y: Tensor) -> Tensor:
+    print(preds.shape)
+    print(preds)
     probs = softmax(preds, dim = 1)[:, 1:, :]
     targs = one_hot(y, num_classes = 8).permute((0, 2, 1)).float()[:, 1:, :]
 
@@ -341,8 +343,6 @@ def main(train_dataset: CHD_Dataset, eval_dataset: CHD_Dataset|None):
         
 if __name__ == '__main__':
     environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
-    environ['NCCL_DEBUG'] = 'INFO'
-    environ['NCCL_DEBUG_SUBSYS'] = 'ALL'
 
     adjacency = __Load_Adjacency__(DIRECTORY + 'ADJACENCY/')
     train_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'train_dataset_info.csv')
