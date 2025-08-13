@@ -41,11 +41,10 @@ TMULT           = 2
 MIN_LR          = 1e-5
 DECAY           = 0.9
 SMOOTH          = 1e-6
-BATCH_SIZE      = 4
-ITERS_TO_ACCUM  = 8
+BATCH_SIZE      = 32
 NUM_WORKERS     = 8
 PREFETCH_FACTOR = 4
-EPOCHS          = 150
+EPOCHS          = 200
 WORLD_SIZE      = device_count()
 M_NAMES         = ['Accuracy ', 'Recall ', 'Precision ',
                    'F1-score ', 'IoU-score ']
@@ -81,7 +80,7 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader,
     lloss = FloatTensor([0.0]).to(rank)
 
     for i, batch in enumerate(tqdm(dataloader, disable = rank != 0)):
-        if train and (i % ITERS_TO_ACCUM == 0):
+        if train:
             assert optimizer is not None
             optimizer.zero_grad(set_to_none = True)
 
@@ -93,11 +92,6 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader,
             preds = model(x = batch.x, adj_matrix = batch.edge_index)
             _, pred_labels = torchmax(preds, dim = 1)
 
-            print(pred_labels)
-            print(pred_labels.shape)
-            print(batch.y)
-            print(batch.y.shape)
-
             cel = loss_module(preds, batch.y)
             dl = Dice(preds, batch.y)
             loss = 0.5 * cel + 0.5 * dl
@@ -108,18 +102,13 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader,
 
             metrics_1.update(preds, batch.y)
             metrics_2.update(pred_labels.unsqueeze(0), batch.y.unsqueeze(0))
-
-            if train:
-                scaled_loss = loss / BATCH_SIZE
             
         if train:
             assert scaler is not None
-            scaler.scale(scaled_loss).backward()
-        
-            if (((i + 1) % ITERS_TO_ACCUM == 0) or ((i + 1) == len(dataloader))):
-                assert optimizer is not None
-                scaler.step(optimizer)
-                scaler.update()
+            scaler.scale(loss).backward()
+            assert optimizer is not None
+            scaler.step(optimizer)
+            scaler.update()
         
     return (ce_loss, d_loss, lloss)
 
@@ -349,7 +338,9 @@ if __name__ == '__main__':
 
     adjacency = __Load_Adjacency__(DIRECTORY + 'ADJACENCY/')
     train_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'train_dataset_info.csv')
-    train_dataset = CHD_Dataset(metadata = train_metadata, adjacency = adjacency,
+    train_dataset = CHD_Dataset(metadata = train_metadata if PRODUCTION else \
+                                train_metadata[:BATCH_SIZE*WORLD_SIZE*NUM_WORKERS*PREFETCH_FACTOR*2],
+                                adjacency = adjacency,
                                 root = DIRECTORY)
     
     eval_dataset = None
