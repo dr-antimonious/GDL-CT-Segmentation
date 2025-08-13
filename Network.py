@@ -1,7 +1,8 @@
-from torch import cat, Tensor
+from torch import cat
 from torch.amp.autocast_mode import autocast
-from torch.nn import Module, ReLU, Linear, ModuleList
-from torch_geometric.nn import PNAConv, BatchNorm, Sequential
+from torch.nn import Module, PReLU, Linear, ModuleList
+from torch_geometric.nn import SSGConv, BatchNorm, Sequential
+from torch_geometric.nn.aggr import PowerMeanAggregation
 
 class CHD_GNN(Module):
     r"""
@@ -9,87 +10,42 @@ class CHD_GNN(Module):
         of images with visible CHDs.
     """
 
-    def block(self, in_channels: int, out_channels: int):
-        towers = min(in_channels, out_channels)
-        if in_channels % towers != 0:
-            towers //= 2
-
-        return Sequential('x, edge_index', [
-            (PNAConv(in_channels = in_channels,
-                     out_channels = out_channels,
-                     aggregators = self.aggregators,
-                     scalers = self.scalers,
-                     deg = self.deg,
-                     towers = towers,
-                     divide_input = True,
-                     act = None,
-                     train_norm = True), 'x, edge_index -> x'),
+    def linear_block(self, in_channels: int, out_channels: int) \
+        -> Sequential:
+        return Sequential('x', [
+            (Linear(in_channels, out_channels), 'x -> x'),
             (BatchNorm(out_channels), 'x -> x'),
-            (ReLU(), 'x -> x')
+            (PReLU(out_channels), 'x -> x')
         ])
     
-    def layer(self, in_channels: int, out_channels: int,
-              hidden_channels: int|None = None):
-        if hidden_channels is None:
-            hidden_channels = out_channels
-
+    def ssgc_block(self, in_channels: int, out_channels: int,
+                   alpha: float, K: int) -> Sequential:
         return Sequential('x, edge_index', [
-            (self.block(in_channels, hidden_channels),
-             'x, edge_index -> x'),
-            (self.block(hidden_channels, out_channels),
-             'x, edge_index -> x')
+            (SSGConv(in_channels,
+                     out_channels,
+                     alpha, K,
+                     aggr = None),
+                     'x, edge_index -> x'),
+            (BatchNorm(out_channels), 'x -> x'),
+            (PReLU(out_channels), 'x -> x'),
+            (PowerMeanAggregation(learn = True,
+                                  channels = out_channels),
+                                  'x -> x')
         ])
     
-    def create_encoder(self):
-        self.layers.append(self.layer(1, 8).to('cuda:0'))
-        self.layers.append(self.layer(8, 16).to('cuda:0'))
-        self.layers.append(self.layer(16, 32).to('cuda:0'))
-        self.layers.append(self.layer(32, 64).to('cuda:0'))
-
-    def create_decoder(self):
-        self.layers.append(self.layer(96, 32, 64).to('cuda:0'))
-        self.layers.append(self.layer(48, 16, 32).to('cuda:0'))
-        self.layers.append(self.layer(24, 8, 16).to('cuda:0'))
-        self.layers.append(Linear(8, 8).to('cuda:0'))
-    
-    @autocast('cuda')
-    def encode(self, x: Tensor, edge_index: Tensor) -> list[Tensor]:
-        out = []
-        
-        for i in range(4):
-            out.append(self.layers[i].forward(
-                x = x if i == 0 else out[i - 1],
-                edge_index = edge_index
-            ))
-        
-        return out
-    
-    @autocast('cuda')
-    def decode(self, x: list[Tensor], edge_index: Tensor) -> Tensor:
-        out = x.pop()
-
-        for i in range(4, len(self.layers) - 1):
-            out = self.layers[i].forward(
-                x = cat([x.pop(), out], dim = 1)
-                    if i != len(self.layers) - 1 else out,
-                edge_index = edge_index
-            )
-
-        out = self.layers[len(self.layers) - 1].forward(
-            input = out
-        )
-
-        return out
-
-    def __init__(self, deg, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.deg = deg
-        self.aggregators = ['mean', 'min', 'max', 'std']
-        self.scalers = ['identity', 'amplification', 'attenuation']
-        self.layers = ModuleList()
-        self.create_encoder()
-        self.create_decoder()
+        self.layers = ModuleList([
+            self.linear_block(1, 8),
+            self.linear_block(8, 16),
+            self.ssgc_block(16, 16, 0.05, 3),
+            self.ssgc_block(32, 16, 0.05, 4),
+            self.ssgc_block(32, 16, 0.05, 4),
+            self.ssgc_block(32, 16, 0.05, 3),
+            self.linear_block(48, 16),
+            self.linear_block(24, 8)
+        ])
 
     @autocast('cuda')
     def forward(self, x, adj_matrix):
@@ -102,6 +58,25 @@ class CHD_GNN(Module):
             Returns:
                 out (Tensor): Segmentation result as a graph.
         """
-        x = self.encode(x = x, edge_index = adj_matrix)
-        x = self.decode(x = x, edge_index = adj_matrix)
-        return x
+        x1 = self.layers[0].forward(x = x)
+        x2 = self.layers[1].forward(x = x1)
+        x3 = self.layers[2].forward(
+            x = x2,
+            edge_index = adj_matrix
+        )
+        x4 = self.layers[3].forward(
+            x = cat([x2, x3], dim = 1),
+            edge_index = adj_matrix
+        )
+        x5 = self.layers[4].forward(
+            x = cat([x3, x4], dim = 1),
+            edge_index = adj_matrix
+        )
+        x6 = self.layers[5].forward(
+            x = cat([x4, x5], dim = 1),
+            edge_index = adj_matrix
+        )
+        x7 = self.layers[6].forward(x = cat([x2, x5, x6], dim = 1))
+        x8 = self.layers[7].forward(x = cat([x1, x7], dim = 1))
+
+        return x8
