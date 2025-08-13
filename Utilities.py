@@ -1,3 +1,4 @@
+from joblib import Parallel, delayed
 from torch import FloatTensor, LongTensor
 from torch_geometric.data import Data, InMemoryDataset
 from numpy import load, array, int64
@@ -25,6 +26,7 @@ class CHD_Dataset(InMemoryDataset):
     self.adjacency = adjacency
 
     super().__init__(root, transform, pre_transform, pre_filter)
+    self.load(self.processed_paths[0])
   
   @property
   def raw_file_names(self):
@@ -50,10 +52,9 @@ class CHD_Dataset(InMemoryDataset):
     return len(self.metadata)
 
   def process(self):
-    data_list: list[Data] = []
     length = len(self.metadata['index'])
 
-    for idx in range(length):
+    def process_single(idx):
       image, label = Extract_And_Convert(path_to_image = self.image_dir \
                                           + str(self.metadata['index'][idx]) + '.nii.gz',
                                         path_to_label = self.label_dir \
@@ -61,11 +62,12 @@ class CHD_Dataset(InMemoryDataset):
                                         plane_type = self.metadata['Type'][idx],
                                         plane_index = self.metadata['Indice'][idx])
       adj_matrix = self.adjacency[str(self.metadata['Adjacency_count'][idx])]
-      data_list.append(Data(x = FloatTensor(image),
-                            edge_index = adj_matrix,
-                            y = LongTensor(label),
-                            adj_count = self.metadata['Adjacency_count'][idx]))
+      return Data(x = FloatTensor(image),
+                  edge_index = adj_matrix,
+                  y = LongTensor(label),
+                  adj_count = self.metadata['Adjacency_count'][idx])
     
+    data_list = Parallel(n_jobs = 50)(delayed(process_single)(idx) for idx in range(length))
     self.save(data_list, self.processed_paths[0])
   
 def __Load_Adjacency__(path):

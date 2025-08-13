@@ -346,8 +346,8 @@ if __name__ == '__main__':
 
     adjacency = __Load_Adjacency__(DIRECTORY + 'ADJACENCY/')
     train_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'train_dataset_info.csv')
-    train_dataset = CHD_Dataset(metadata = train_metadata,
-                                adjacency = adjacency, root = DIRECTORY)
+    train_dataset = CHD_Dataset(metadata = train_metadata, adjacency = adjacency,
+                                root = DIRECTORY)
     
     eval_dataset = None
     if PRODUCTION:
