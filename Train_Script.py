@@ -62,10 +62,10 @@ PRODUCTION      = PRODUCTION_STR.lower() == 'true'
 def Dice(preds: Tensor, y: Tensor) -> Tensor:
     print(preds.shape)
     print(preds)
-    probs = softmax(preds, dim = 1)[:, 1:, :]
-    targs = one_hot(y, num_classes = 8).permute((0, 2, 1)).float()[:, 1:, :]
+    probs = softmax(preds, dim = 1)[:, 1:]
+    targs = one_hot(y, num_classes = 8).float()[:, 1:]
 
-    dims = (0, 2)
+    dims = (0)
     intersection = sum(probs * targs, dims)
     union = sum(probs + targs, dims)
 
