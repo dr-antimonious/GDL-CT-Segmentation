@@ -46,7 +46,7 @@ class CHD_Dataset(Dataset):
   def processed_dir(self) -> str:
     return self.root
 
-  def __len__(self):
+  def len(self):
     return len(self.metadata)
   
   def get(self, idx):
