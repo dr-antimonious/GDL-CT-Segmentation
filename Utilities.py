@@ -44,7 +44,7 @@ class CHD_Dataset(InMemoryDataset):
   
   @property
   def processed_dir(self) -> str:
-    return '/ephemeral/chd_ct_seg/'
+    return '/home/ubuntu/proj/'
 
   def __len__(self):
     return len(self.metadata)
