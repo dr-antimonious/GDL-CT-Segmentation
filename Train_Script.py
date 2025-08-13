@@ -344,7 +344,7 @@ if __name__ == '__main__':
     adjacency = __Load_Adjacency__(DIRECTORY + 'ADJACENCY/')
     train_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'train_dataset_info.csv')
     train_dataset = CHD_Dataset(metadata = train_metadata if PRODUCTION \
-                                           else train_metadata[:BATCH_SIZE*ITERS_TO_ACCUM*WORLD_SIZE*2],
+                                           else train_metadata[:BATCH_SIZE*ITERS_TO_ACCUM*WORLD_SIZE*50],
                                 adjacency = adjacency, root = DIRECTORY)
     
     eval_dataset = None

@@ -24,8 +24,7 @@ class CHD_Dataset(InMemoryDataset):
     self.label_dir = root + 'LABELS/'
     self.adjacency = adjacency
 
-    super().__init__(root, transform, pre_transform,
-                     pre_filter, force_reload = True)
+    super().__init__(root, transform, pre_transform, pre_filter)
   
   @property
   def raw_file_names(self):
