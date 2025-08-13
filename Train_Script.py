@@ -248,6 +248,8 @@ def main(train_dataset: CHD_Dataset, eval_dataset: CHD_Dataset|None):
         FIRST = 0
         if RANK == 0:
             print('Starting new training')
+    
+    print(f"[Rank {RANK}] Dataset len: {len(train_dataset)}, Sampler len: {len(train_sampler)}")
 
     for epoch in range(FIRST, EPOCHS):
         scheduler.step(epoch)
@@ -269,8 +271,9 @@ def main(train_dataset: CHD_Dataset, eval_dataset: CHD_Dataset|None):
             ((epoch < 31) and ((epoch - 14) % 2 == 0)) or \
             ((epoch - 30) % 3 == 0))
 
-        print('--------------------------------------------------')
-        print('Epoch ', epoch + 1)
+        if RANK == 0:
+            print('--------------------------------------------------')
+            print('Epoch ', epoch + 1)
 
         model.train()
         (tce_l, td_l, train_loss) = loader_loop(RANK, True, train_dataloader,
