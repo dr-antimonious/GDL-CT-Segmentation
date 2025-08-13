@@ -23,14 +23,10 @@ class CHD_GNN(Module):
         return Sequential('x, edge_index', [
             (SSGConv(in_channels,
                      out_channels,
-                     alpha, K,
-                     aggr = None),
+                     alpha, K),
                      'x, edge_index -> x'),
             (BatchNorm(out_channels), 'x -> x'),
-            (PReLU(out_channels), 'x -> x'),
-            (PowerMeanAggregation(learn = True,
-                                  channels = out_channels),
-                                  'x -> x')
+            (PReLU(out_channels), 'x -> x')
         ])
     
     def __init__(self, *args, **kwargs):
