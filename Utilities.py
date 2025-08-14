@@ -65,8 +65,8 @@ class CHD_Dataset(Dataset):
     return len(self.metadata)
   
   def get(self, idx):
-    image, label = Extract_And_Convert(im = self.images[self.image_dir.index(self.metadata['index'][idx])],
-                                       la = self.labels[self.label_dir.index(self.metadata['index'][idx])],
+    image, label = Extract_And_Convert(im = self.images[self.image_dir.index(str(self.metadata['index'][idx]))],
+                                       la = self.labels[self.label_dir.index(str(self.metadata['index'][idx]))],
                                        plane_type = self.metadata['Type'][idx],
                                        plane_index = self.metadata['Indice'][idx])
     adj_matrix = self.adjacency[str(self.metadata['Adjacency_count'][idx])]
