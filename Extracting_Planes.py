@@ -41,8 +41,8 @@ def Convert_To_Graph(image: ndarray, label: ndarray) -> tuple[ndarray, ndarray]:
     img = array(image, dtype = int32)
     img = Compute_Additional_Features(img)
     lab = array(label, dtype = uint8)
-    img[1::2, :, :] = image[1::2, ::-1, :]
-    lab[1::2, :] = label[1::2, ::-1]
+    img[1::2, :, :] = img[1::2, ::-1, :]
+    lab[1::2, :] = lab[1::2, ::-1]
     
     img = img.flatten()
     img = img.reshape((-1, 1))
