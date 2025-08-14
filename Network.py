@@ -40,7 +40,7 @@ class CHD_GNN(Module):
             self.ssgc_block(32, 16, 0.05, 4),
             self.ssgc_block(32, 16, 0.05, 3),
             self.linear_block(48, 16),
-            self.linear_block(24, 8)
+            Linear(24, 8)
         ])
 
     @autocast('cuda')
