@@ -32,7 +32,7 @@ from shutil import copy
 from tqdm import tqdm
 
 from Network import CHD_GNN
-from Utilities import CHD_Dataset, __Load_Adjacency__
+from Utilities import CHD_Dataset, __Load_Adjacency__, load_nifti
 
 LR              = 1e-3
 T0              = 10
@@ -154,12 +154,18 @@ def main():
     adjacency = __Load_Adjacency__(DIRECTORY + 'ADJACENCY/')
     train_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'train_dataset_info.csv')
 
+    images = [load_nifti(DIRECTORY + 'IMAGES/', idx) \
+              for idx in train_metadata['index'].unique()]
+    labels = [load_nifti(DIRECTORY + 'LABELS/', idx) \
+              for idx in train_metadata['index'].unique()]
+    
     TRAIN_LEN = len(train_metadata) if PRODUCTION else \
         BATCH_SIZE*WORLD_SIZE*NUM_WORKERS*PREFETCH_FACTOR*2
     TRAIN_START = RANK * (TRAIN_LEN // WORLD_SIZE)
     TRAIN_END = (RANK + 1) * (TRAIN_LEN // WORLD_SIZE)
     train_dataset = CHD_Dataset(metadata = train_metadata[TRAIN_START:TRAIN_END],
-                                adjacency = adjacency, root = DIRECTORY)
+                                adjacency = adjacency, root = DIRECTORY,
+                                images = images, labels = labels)
     
     eval_dataset = None
     if PRODUCTION:
@@ -167,7 +173,8 @@ def main():
         EVAL_START = RANK * (len(eval_metadata) // WORLD_SIZE)
         EVAL_END = (RANK + 1) * (len(eval_metadata) // WORLD_SIZE)
         eval_dataset = CHD_Dataset(metadata = eval_metadata[EVAL_START:EVAL_END],
-                                   adjacency = adjacency, root = DIRECTORY)
+                                   adjacency = adjacency, root = DIRECTORY,
+                                   images = images, labels = labels)
     
     train_dataloader = DataLoader(dataset = train_dataset,
                                   batch_size = BATCH_SIZE,

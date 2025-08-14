@@ -16,7 +16,7 @@ class CHD_Dataset(Dataset):
     PyTorch dataset class used for the ImageCHD dataset.
   """
 
-  def __init__(self, metadata, adjacency, root,
+  def __init__(self, metadata, adjacency, root, images, labels,
                pre_transform = None, pre_filter = None,
                transform = None):
     r"""
@@ -32,9 +32,9 @@ class CHD_Dataset(Dataset):
 
     super().__init__(root, transform, pre_transform, pre_filter)
 
-    self.images: list = [load_nifti(self.image_dir, idx) for idx in self.sample_indices]
+    self.images: list = images
     self.image_idxs: list = [str(idx) for idx in self.sample_indices]
-    self.labels: list = [load_nifti(self.label_dir, idx) for idx in self.sample_indices]
+    self.labels: list = labels
     self.label_idxs: list = [str(idx) for idx in self.sample_indices]
   
   @property
