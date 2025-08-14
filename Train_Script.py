@@ -239,7 +239,7 @@ def main():
     decay_cycle_len = T0
     max_lr = LR
 
-    if PRODUCTION and exists(CHECKPOINT):
+    if exists(CHECKPOINT):
         LOC = 'cuda:' + str(RANK)
         snapshot = load(CHECKPOINT, map_location = LOC)
         model.load_state_dict(snapshot['MODEL_STATE'])
