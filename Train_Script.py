@@ -3,7 +3,7 @@ from torch import max as torchmax
 from torch import Tensor, FloatTensor, save, load, no_grad, sum
 from torch.amp.autocast_mode import autocast
 from torch.amp.grad_scaler import GradScaler
-from torch.cuda import is_available, device_count, set_device
+from torch.cuda import is_available, device_count, set_device, empty_cache
 from torch.distributed import init_process_group, destroy_process_group, \
     all_reduce, ReduceOp, barrier
 from torch.distributed.optim import ZeroRedundancyOptimizer
@@ -25,6 +25,7 @@ from torchmetrics.collections import MetricCollection
 from torchmetrics.segmentation.dice import DiceScore
 from torchmetrics.segmentation.mean_iou import MeanIoU
 
+from gc import collect
 from numpy import array, unique
 from os import environ, getenv
 from os.path import exists
@@ -42,7 +43,7 @@ MIN_LR          = 1e-5
 DECAY           = 0.9
 SMOOTH          = 1e-6
 BATCH_SIZE      = 32
-NUM_WORKERS     = 16
+NUM_WORKERS     = 8
 PREFETCH_FACTOR = 2
 EPOCHS          = 200
 WORLD_SIZE      = device_count()
@@ -180,7 +181,6 @@ def main():
     train_dataloader = DataLoader(dataset = train_dataset,
                                   batch_size = BATCH_SIZE,
                                   num_workers = NUM_WORKERS,
-                                  persistent_workers = True,
                                   pin_memory = True, drop_last = True,
                                   prefetch_factor = PREFETCH_FACTOR,
                                   shuffle = True)
@@ -193,7 +193,6 @@ def main():
         eval_dataloader = DataLoader(dataset = eval_dataset,
                                      batch_size = BATCH_SIZE,
                                      num_workers = NUM_WORKERS,
-                                     persistent_workers = True,
                                      shuffle = False, pin_memory = True,
                                      prefetch_factor = PREFETCH_FACTOR,
                                      drop_last = True)
@@ -337,6 +336,9 @@ def main():
         
         if RANK == 0:
             writer.flush()
+        
+        collect()
+        empty_cache()
     
     destroy_process_group()
         
