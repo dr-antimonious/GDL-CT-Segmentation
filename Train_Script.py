@@ -137,8 +137,8 @@ def print_metrics(epoch: int, metrics: dict, writer: SummaryWriter, train: bool)
     for m in range(3, len(metrics)):
         vals = metrics[M_LOOP[m]]
         for i in range(len(vals)):
-            print(M_NAMES[m], i, ': ', vals[i].item())
-            writer.add_scalar(PHASE + M_LOGS[m] + str(i), vals[i].item(),
+            print(M_NAMES[m-3], i, ': ', vals[i].item())
+            writer.add_scalar(PHASE + M_LOGS[m-3] + str(i), vals[i].item(),
                               global_step = epoch + 1)
 
 def main():
