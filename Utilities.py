@@ -32,8 +32,10 @@ class CHD_Dataset(Dataset):
 
     super().__init__(root, transform, pre_transform, pre_filter)
 
-    self.images = {idx: load_nifti(self.image_dir, idx) for idx in self.sample_indices}
-    self.labels = {idx: load_nifti(self.label_dir, idx) for idx in self.sample_indices}
+    self.images: list = [load_nifti(self.image_dir, idx) for idx in self.sample_indices]
+    self.image_idxs: list = [idx for idx in self.sample_indices]
+    self.labels: list = [load_nifti(self.label_dir, idx) for idx in self.sample_indices]
+    self.label_idxs: list = [idx for idx in self.sample_indices]
   
   @property
   def sample_indices(self):
@@ -63,8 +65,8 @@ class CHD_Dataset(Dataset):
     return len(self.metadata)
   
   def get(self, idx):
-    image, label = Extract_And_Convert(im = self.images[self.metadata['index'][idx]],
-                                       la = self.labels[self.metadata['index'][idx]],
+    image, label = Extract_And_Convert(im = self.images[self.image_dir.index(self.metadata['index'][idx])],
+                                       la = self.labels[self.label_dir.index(self.metadata['index'][idx])],
                                        plane_type = self.metadata['Type'][idx],
                                        plane_index = self.metadata['Indice'][idx])
     adj_matrix = self.adjacency[str(self.metadata['Adjacency_count'][idx])]
