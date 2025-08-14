@@ -36,11 +36,11 @@ from tqdm import tqdm
 from Network import CHD_GNN
 from Utilities import CHD_Dataset, __Load_Adjacency__, load_nifti
 
-LR              = 1e-3
-T0              = 10
+LR              = 1e-2
+T0              = 15
 TMULT           = 2
 MIN_LR          = 1e-5
-DECAY           = 0.9
+DECAY           = 0.95
 SMOOTH          = 1e-6
 BATCH_SIZE      = 32
 NUM_WORKERS     = 8
@@ -324,7 +324,7 @@ def main():
             if RANK == 0:
                 print_metrics(epoch, metrics, writer, True)
 
-        if PRODUCTION and RANK == 0:
+        if RANK == 0:
             checkpoint_path = 'MODELS/gnn_' + str(epoch + 1) + '.checkpoint'
             snapshot = {
                 'MODEL_STATE': model.module.state_dict(),
@@ -333,8 +333,6 @@ def main():
             }
             save(snapshot, checkpoint_path)
             copy('MODELS/gnn_' + str(epoch + 1) + '.checkpoint', CHECKPOINT)
-        
-        if RANK == 0:
             writer.flush()
         
         collect()
