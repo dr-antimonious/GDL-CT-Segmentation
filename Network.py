@@ -36,14 +36,12 @@ class CHD_GNN(Module):
             self.linear_block(32, 64),
             self.ssgc_block(64, 64, 0.05, 3),
             self.ssgc_block(64, 64, 0.05, 4),
-            self.ssgc_block(64, 64, 0.05, 4),
             self.ssgc_block(64, 64, 0.05, 3),
             self.linear_block(64, 32),
             Linear(32, 8)
         ])
 
         self.params = ParameterList([
-            Parameter(tensor([0.5])),
             Parameter(tensor([0.5])),
             Parameter(tensor([0.5])),
             Parameter(tensor([0.0, 0.0, 0.0])),
@@ -75,12 +73,8 @@ class CHD_GNN(Module):
             x = (1 - self.params[1]) * x3 + self.params[1] * x4,
             edge_index = adj_matrix
         )
-        x6 = self.layers[5].forward(
-            x = (1 - self.params[2]) * x4 + self.params[2] * x5,
-            edge_index = adj_matrix
-        )
-        w = softmax(self.params[3], dim = 0)
-        x7 = self.layers[6].forward(x = w[0] * x2 + w[1] * x5 + w[2] * x6)
-        x8 = self.layers[7].forward((1 - self.params[4]) * x1 + self.params[4] * x7)
+        w = softmax(self.params[2], dim = 0)
+        x6 = self.layers[5].forward(x = w[0] * x2 + w[1] * x4 + w[2] * x5)
+        x7 = self.layers[6].forward((1 - self.params[3]) * x1 + self.params[3] * x6)
 
-        return x8
+        return x7
