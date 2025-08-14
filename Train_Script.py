@@ -166,7 +166,7 @@ def main():
         eval_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'eval_dataset_info.csv')
         EVAL_START = RANK * (len(eval_metadata) // WORLD_SIZE)
         EVAL_END = (RANK + 1) * (len(eval_metadata) // WORLD_SIZE)
-        eval_dataset = CHD_Dataset(metadata = eval_metadata[EVAL_START + EVAL_END],
+        eval_dataset = CHD_Dataset(metadata = eval_metadata[EVAL_START:EVAL_END],
                                    adjacency = adjacency, root = DIRECTORY)
     
     train_dataloader = DataLoader(dataset = train_dataset,
