@@ -154,9 +154,7 @@ def main():
     
     adjacency = __Load_Adjacency__(DIRECTORY + 'ADJACENCY/')
     train_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'train_dataset_info.csv')
-    
-    if RANK == 0:
-        print(len(train_metadata))
+    print(len(train_metadata))
 
     TRAIN_LEN = len(train_metadata) if PRODUCTION else \
         BATCH_SIZE*WORLD_SIZE*NUM_WORKERS*PREFETCH_FACTOR*2
@@ -179,15 +177,6 @@ def main():
     train_dataset = CHD_Dataset(metadata = train_metadata,
                                 adjacency = adjacency, root = DIRECTORY,
                                 images = images, labels = labels)
-    if RANK == 0:
-        print(len(train_dataset))
-    
-    if PRODUCTION:
-        eval_metadata = DataFrame(eval_metadata[EVAL_START:EVAL_END])
-        eval_dataset = CHD_Dataset(metadata = eval_metadata,
-                                   adjacency = adjacency, root = DIRECTORY,
-                                   images = images, labels = labels)
-    
     train_dataloader = DataLoader(dataset = train_dataset,
                                   batch_size = BATCH_SIZE,
                                   num_workers = NUM_WORKERS,
@@ -195,9 +184,12 @@ def main():
                                   pin_memory = True, drop_last = True,
                                   prefetch_factor = PREFETCH_FACTOR,
                                   shuffle = True)
-
+    
     if PRODUCTION:
-        assert eval_dataset is not None
+        eval_metadata = DataFrame(eval_metadata[EVAL_START:EVAL_END])
+        eval_dataset = CHD_Dataset(metadata = eval_metadata,
+                                   adjacency = adjacency, root = DIRECTORY,
+                                   images = images, labels = labels)
         eval_dataloader = DataLoader(dataset = eval_dataset,
                                      batch_size = BATCH_SIZE,
                                      num_workers = NUM_WORKERS,
