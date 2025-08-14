@@ -2,14 +2,14 @@ from torch import FloatTensor, LongTensor
 from torch_geometric.data import Data, Dataset
 
 from numpy import load, array, int64
-from nibabel.loadsave import load
+from nibabel.loadsave import load as bload
 from os import listdir
 from pandas import DataFrame
 
 from Extracting_Planes import Extract_And_Convert
 
 def load_nifti(dir: str, idx: int):
-  return {idx, load(dir + str(idx) + '.nii.gz').get_fdata()}
+  return {idx, bload(dir + str(idx) + '.nii.gz').get_fdata()}
 
 class CHD_Dataset(Dataset):
   r"""
