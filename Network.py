@@ -1,8 +1,7 @@
-from torch import cat
+from torch import tensor, softmax
 from torch.amp.autocast_mode import autocast
-from torch.nn import Module, PReLU, Linear, ModuleList
+from torch.nn import Module, PReLU, Linear, ModuleList, ParameterList, Parameter
 from torch_geometric.nn import SSGConv, BatchNorm, Sequential
-from torch_geometric.nn.aggr import PowerMeanAggregation
 
 class CHD_GNN(Module):
     r"""
@@ -33,14 +32,22 @@ class CHD_GNN(Module):
         super().__init__(*args, **kwargs)
 
         self.layers = ModuleList([
-            self.linear_block(1, 8),
-            self.linear_block(8, 16),
-            self.ssgc_block(16, 16, 0.05, 3),
-            self.ssgc_block(32, 16, 0.05, 4),
-            self.ssgc_block(32, 16, 0.05, 4),
-            self.ssgc_block(32, 16, 0.05, 3),
-            self.linear_block(48, 16),
-            Linear(24, 8)
+            self.linear_block(1, 32),
+            self.linear_block(32, 64),
+            self.ssgc_block(64, 64, 0.05, 3),
+            self.ssgc_block(64, 64, 0.05, 4),
+            self.ssgc_block(64, 64, 0.05, 4),
+            self.ssgc_block(64, 64, 0.05, 3),
+            self.linear_block(64, 32),
+            Linear(32, 8)
+        ])
+
+        self.params = ParameterList([
+            Parameter(tensor([0.5])),
+            Parameter(tensor([0.5])),
+            Parameter(tensor([0.5])),
+            Parameter(tensor([0.0, 0.0, 0.0])),
+            Parameter(tensor([0.5]))
         ])
 
     @autocast('cuda')
@@ -61,18 +68,19 @@ class CHD_GNN(Module):
             edge_index = adj_matrix
         )
         x4 = self.layers[3].forward(
-            x = cat([x2, x3], dim = 1),
+            x = (1 - self.params[0]) * x2 + self.params[0] * x3,
             edge_index = adj_matrix
         )
         x5 = self.layers[4].forward(
-            x = cat([x3, x4], dim = 1),
+            x = (1 - self.params[1]) * x3 + self.params[1] * x4,
             edge_index = adj_matrix
         )
         x6 = self.layers[5].forward(
-            x = cat([x4, x5], dim = 1),
+            x = (1 - self.params[2]) * x4 + self.params[2] * x5,
             edge_index = adj_matrix
         )
-        x7 = self.layers[6].forward(x = cat([x2, x5, x6], dim = 1))
-        x8 = self.layers[7].forward(cat([x1, x7], dim = 1))
+        w = softmax(self.params[3], dim = 0)
+        x7 = self.layers[6].forward(x = w[0] * x2 + w[1] * x5 + w[2] * x6)
+        x8 = self.layers[7].forward((1 - self.params[4]) * x1 + self.params[4] * x7)
 
         return x8

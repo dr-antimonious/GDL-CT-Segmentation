@@ -309,7 +309,7 @@ def main():
                                       None, metrics_1, metrics_2)
             
             for i in range(len(metrics)):
-                metrics[M_LOOP[i]] /= len(train_dataloader)
+                metrics[M_LOOP[i]] /= len(eval_dataloader)
 
             barrier()
             handles = []
@@ -322,7 +322,7 @@ def main():
                 h.wait()
 
             if RANK == 0:
-                print_metrics(epoch, metrics, writer, True)
+                print_metrics(epoch, metrics, writer, False)
 
         if RANK == 0:
             checkpoint_path = 'MODELS/gnn_' + str(epoch + 1) + '.checkpoint'
