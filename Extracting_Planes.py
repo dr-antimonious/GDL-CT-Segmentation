@@ -22,10 +22,10 @@ def Compute_Additional_Features(image: ndarray) -> ndarray:
     features.append(std)
 
     y_idx, x_idx = indices((height, width))
-    x_idx /= width
-    y_idx /= height
-    features.append(x_idx)
-    features.append(y_idx)
+    norm_x_idx = x_idx / width
+    norm_y_idx = y_idx / height
+    features.append(norm_x_idx)
+    features.append(norm_y_idx)
 
     return stack(features, axis = 2)
 
