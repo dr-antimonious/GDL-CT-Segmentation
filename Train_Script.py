@@ -166,7 +166,7 @@ def main():
         eval_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'eval_dataset_info.csv')
         EVAL_START = RANK * (len(eval_metadata) // WORLD_SIZE)
         EVAL_END = (RANK + 1) * (len(eval_metadata) // WORLD_SIZE)
-        indices.append(eval_metadata[EVAL_START:EVAL_END]['index'].unique().tolist())
+        indices += eval_metadata[EVAL_START:EVAL_END]['index'].unique().tolist()
 
     uniques = unique(array(indices))
     print(uniques)
