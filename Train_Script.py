@@ -26,7 +26,7 @@ from torchmetrics.segmentation.dice import DiceScore
 from torchmetrics.segmentation.mean_iou import MeanIoU
 
 from gc import collect
-from numpy import array, unique
+from numpy import array, unique, empty
 from os import environ, getenv
 from os.path import exists
 from pandas import read_csv, DataFrame
@@ -81,7 +81,9 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader,
                 model: DistributedDataParallel, scaler: GradScaler|None,
                 loss_module: CrossEntropyLoss, optimizer: ZeroRedundancyOptimizer|None,
                 metrics_1: MetricCollection, metrics_2: MetricCollection) -> dict:
-    metrics = {M_LOOP[i]: FloatTensor([0.0]).to(rank) for i in range(len(M_LOOP))}
+    metrics = {M_LOOP[i]: FloatTensor([0.0]).to(rank) for i in range(3)}
+    metrics.update([(M_LOOP[i], FloatTensor(empty(8)).to(rank)) \
+                    for i in range(3, len(M_LOOP))])
 
     for batch in tqdm(dataloader, disable = rank != 0):
         if train:
