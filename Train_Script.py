@@ -135,10 +135,10 @@ def print_metrics(epoch: int, metrics: dict, writer: SummaryWriter, train: bool)
     writer.add_scalar(PHASE + '_dice_loss', metrics[M_LOOP[1]].item(), global_step = epoch + 1)
 
     for m in range(3, len(metrics)):
-        vals = metrics[M_LOOP[m]].item()
+        vals = metrics[M_LOOP[m]]
         for i in range(len(vals)):
-            print(M_NAMES[m], i, ': ', vals[i])
-            writer.add_scalar(PHASE + M_LOGS[m] + str(i), vals[i],
+            print(M_NAMES[m], i, ': ', vals[i].item())
+            writer.add_scalar(PHASE + M_LOGS[m] + str(i), vals[i].item(),
                               global_step = epoch + 1)
 
 def main():
