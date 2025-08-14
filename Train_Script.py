@@ -28,7 +28,7 @@ from torchmetrics.segmentation.mean_iou import MeanIoU
 from numpy import array, unique
 from os import environ, getenv
 from os.path import exists
-from pandas import read_csv
+from pandas import read_csv, DataFrame
 from shutil import copy
 from tqdm import tqdm
 
@@ -157,7 +157,7 @@ def main():
     
     if RANK == 0:
         print(len(train_metadata))
-        
+
     TRAIN_LEN = len(train_metadata) if PRODUCTION else \
         BATCH_SIZE*WORLD_SIZE*NUM_WORKERS*PREFETCH_FACTOR*2
     TRAIN_START = RANK * (TRAIN_LEN // WORLD_SIZE)
@@ -175,14 +175,16 @@ def main():
     images = [load_nifti(DIRECTORY + 'IMAGES/', idx) for idx in uniques]
     labels = [load_nifti(DIRECTORY + 'LABELS/', idx) for idx in uniques]
 
-    train_dataset = CHD_Dataset(metadata = train_metadata[TRAIN_START:TRAIN_END],
+    train_metadata = DataFrame(train_metadata[TRAIN_START:TRAIN_END])
+    train_dataset = CHD_Dataset(metadata = train_metadata,
                                 adjacency = adjacency, root = DIRECTORY,
                                 images = images, labels = labels)
     if RANK == 0:
         print(len(train_dataset))
     
     if PRODUCTION:
-        eval_dataset = CHD_Dataset(metadata = eval_metadata[EVAL_START:EVAL_END],
+        eval_metadata = DataFrame(eval_metadata[EVAL_START:EVAL_END])
+        eval_dataset = CHD_Dataset(metadata = eval_metadata,
                                    adjacency = adjacency, root = DIRECTORY,
                                    images = images, labels = labels)
     
