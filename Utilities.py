@@ -33,9 +33,9 @@ class CHD_Dataset(Dataset):
     super().__init__(root, transform, pre_transform, pre_filter)
 
     self.images: list = [load_nifti(self.image_dir, idx) for idx in self.sample_indices]
-    self.image_idxs: list = [idx for idx in self.sample_indices]
+    self.image_idxs: list = [str(idx) for idx in self.sample_indices]
     self.labels: list = [load_nifti(self.label_dir, idx) for idx in self.sample_indices]
-    self.label_idxs: list = [idx for idx in self.sample_indices]
+    self.label_idxs: list = [str(idx) for idx in self.sample_indices]
   
   @property
   def sample_indices(self):
