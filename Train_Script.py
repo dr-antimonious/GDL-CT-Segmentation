@@ -134,7 +134,7 @@ def print_metrics(epoch: int, metrics: dict, writer: SummaryWriter, train: bool)
     print('Dice Loss: ', metrics[M_LOOP[1]].item())
     writer.add_scalar(PHASE + '_dice_loss', metrics[M_LOOP[1]].item(), global_step = epoch + 1)
 
-    for m in range(len(metrics[3:])):
+    for m in range(3, len(metrics)):
         vals = metrics[M_LOOP[m]].item()
         for i in range(len(vals)):
             print(M_NAMES[m], i, ': ', vals[i])
