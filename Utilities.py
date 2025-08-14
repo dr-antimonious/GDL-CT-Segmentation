@@ -9,7 +9,7 @@ from pandas import DataFrame
 from Extracting_Planes import Extract_And_Convert
 
 def load_nifti(dir: str, idx: int):
-  return {idx, bload(dir + str(idx) + '.nii.gz').get_fdata()}
+  return bload(dir + str(idx) + '.nii.gz').get_fdata()
 
 class CHD_Dataset(Dataset):
   r"""
