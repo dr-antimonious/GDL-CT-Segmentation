@@ -170,6 +170,7 @@ def main():
 
     uniques = unique(array(indices))
     images = [load_nifti(DIRECTORY + 'IMAGES/', idx) for idx in uniques]
+    print(images[0].shape())
     labels = [load_nifti(DIRECTORY + 'LABELS/', idx) for idx in uniques]
 
     train_dataset = CHD_Dataset(metadata = train_metadata[TRAIN_START:TRAIN_END],
