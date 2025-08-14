@@ -155,7 +155,6 @@ def main():
     
     adjacency = __Load_Adjacency__(DIRECTORY + 'ADJACENCY/')
     train_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'train_dataset_info.csv')
-    print(len(train_metadata))
 
     TRAIN_LEN = len(train_metadata) if PRODUCTION else \
         BATCH_SIZE*WORLD_SIZE*NUM_WORKERS*PREFETCH_FACTOR*2
@@ -242,7 +241,6 @@ def main():
         LOC = 'cuda:' + str(RANK)
         snapshot = load(CHECKPOINT, map_location = LOC)
         model.load_state_dict(snapshot['MODEL_STATE'])
-        optimizer.load_state_dict(snapshot['OPTIM_STATE'])
         FIRST = snapshot['EPOCHS_RUN']
 
         if RANK == 0:
@@ -328,7 +326,6 @@ def main():
             checkpoint_path = 'MODELS/gnn_' + str(epoch + 1) + '.checkpoint'
             snapshot = {
                 'MODEL_STATE': model.module.state_dict(),
-                'OPTIM_STATE': optimizer.state_dict(),
                 'EPOCHS_RUN': epoch + 1
             }
             save(snapshot, checkpoint_path)
