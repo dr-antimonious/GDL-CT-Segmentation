@@ -32,7 +32,7 @@ class CHD_GNN(Module):
         super().__init__(*args, **kwargs)
 
         self.layers = ModuleList([
-            self.linear_block(1, 32),
+            self.linear_block(6, 32),
             self.linear_block(32, 64),
             self.ssgc_block(64, 64, 0.05, 3),
             self.ssgc_block(64, 64, 0.05, 4),

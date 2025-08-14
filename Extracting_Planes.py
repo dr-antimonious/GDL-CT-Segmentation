@@ -1,4 +1,33 @@
-from numpy import ndarray, array, int32, uint8
+from numpy import ndarray, array, int32, uint8, float32, \
+    hypot, sqrt, maximum, indices, stack
+from scipy.ndimage import sobel, uniform_filter
+
+def Compute_Additional_Features(image: ndarray) -> ndarray:
+    height, width = image.shape
+    features = []
+
+    intensity = image.astype(float32)
+    features.append(intensity)
+
+    grad_x = sobel(intensity, axis = 0)
+    grad_y = sobel(intensity, axis = 1)
+    grad = hypot(grad_x, grad_y)
+    features.append(grad)
+
+    mean = uniform_filter(intensity)
+    features.append(mean)
+
+    sq = uniform_filter(intensity ** 2)
+    std = sqrt(maximum(sq - mean ** 2, 1e-6))
+    features.append(std)
+
+    y_idx, x_idx = indices((height, width))
+    x_idx /= width
+    y_idx /= height
+    features.append(x_idx)
+    features.append(y_idx)
+
+    return stack(features, axis = 2)
 
 def Convert_To_Graph(image: ndarray, label: ndarray) -> tuple[ndarray, ndarray]:
     r"""
@@ -10,12 +39,13 @@ def Convert_To_Graph(image: ndarray, label: ndarray) -> tuple[ndarray, ndarray]:
             out (tuple[numpy.ndarray, numpy.ndarray]): Source coronary-CT image and ground truth segmentation as graphs.
     """
     img = array(image, dtype = int32)
+    img = Compute_Additional_Features(img)
     lab = array(label, dtype = uint8)
-    img[1::2, :] = image[1::2, ::-1]
+    img[1::2, :, :] = image[1::2, ::-1, :]
     lab[1::2, :] = label[1::2, ::-1]
     
     img = img.flatten()
-    img = img.reshape((img.shape[0], 1))
+    img = img.reshape((-1, 1))
 
     lab[lab > 7] = 0
     lab = lab.flatten()
