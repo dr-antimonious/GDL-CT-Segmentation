@@ -25,7 +25,7 @@ from torchmetrics.collections import MetricCollection
 from torchmetrics.segmentation.dice import DiceScore
 from torchmetrics.segmentation.mean_iou import MeanIoU
 
-from numpy import array
+from numpy import array, unique
 from os import environ, getenv
 from os.path import exists
 from pandas import read_csv
@@ -168,7 +168,7 @@ def main():
         EVAL_END = (RANK + 1) * (len(eval_metadata) // WORLD_SIZE)
         indices.append(eval_metadata[EVAL_START:EVAL_END]['index'].unique().tolist())
 
-    uniques: set = set(indices)
+    uniques = unique(array(indices))
     print(uniques)
     images = [load_nifti(DIRECTORY + 'IMAGES/', idx) for idx in uniques]
     labels = [load_nifti(DIRECTORY + 'LABELS/', idx) for idx in uniques]
