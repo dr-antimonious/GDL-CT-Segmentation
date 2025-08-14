@@ -107,9 +107,9 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader,
             metrics['loss'] += loss.item()
 
             for i in range(len(m1)):
-                metrics[M_LOOP[i+3]] = m1[M1_NAMES[i]]
+                metrics[M_LOOP[i+3]] += m1[M1_NAMES[i]]
             for i in range(len(m2)):
-                metrics[M_LOOP[i+6]] = m2[M2_NAMES[i]]
+                metrics[M_LOOP[i+6]] += m2[M2_NAMES[i]]
             
         if train:
             assert scaler is not None

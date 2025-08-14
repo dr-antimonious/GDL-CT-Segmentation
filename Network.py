@@ -73,6 +73,6 @@ class CHD_GNN(Module):
             edge_index = adj_matrix
         )
         x7 = self.layers[6].forward(x = cat([x2, x5, x6], dim = 1))
-        x8 = self.layers[7].forward(x = cat([x1, x7], dim = 1))
+        x8 = self.layers[7].forward(cat([x1, x7], dim = 1))
 
         return x8
