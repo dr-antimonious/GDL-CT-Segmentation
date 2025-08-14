@@ -64,15 +64,19 @@ class CHD_Dataset(Dataset):
     return len(self.metadata)
   
   def get(self, idx):
-    image, label = Extract_And_Convert(im = self.images[self.idxs.index(self.metadata['index'][idx])],
-                                       la = self.labels[self.idxs.index(self.metadata['index'][idx])],
-                                       plane_type = self.metadata['Type'][idx],
-                                       plane_index = self.metadata['Indice'][idx])
-    adj_matrix = self.adjacency[str(self.metadata['Adjacency_count'][idx])]
-    return Data(x = FloatTensor(image),
-                edge_index = adj_matrix,
-                y = LongTensor(label),
-                adj_count = self.metadata['Adjacency_count'][idx])
+    image, label = Extract_And_Convert(
+      im = self.images[self.idxs.index(self.metadata['index'].iloc[idx])],
+      la = self.labels[self.idxs.index(self.metadata['index'].iloc[idx])],
+      plane_type = self.metadata['Type'].iloc[idx],
+      plane_index = self.metadata['Indice'].iloc[idx]
+    )
+    adj_matrix = self.adjacency[str(self.metadata['Adjacency_count'].iloc[idx])]
+    return Data(
+      x = FloatTensor(image),
+      edge_index = adj_matrix,
+      y = LongTensor(label),
+      adj_count = self.metadata['Adjacency_count'].iloc[idx]
+    )
 
 def __Load_Adjacency__(path):
   files = listdir(path)
