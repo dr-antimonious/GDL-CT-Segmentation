@@ -155,6 +155,9 @@ def main():
     adjacency = __Load_Adjacency__(DIRECTORY + 'ADJACENCY/')
     train_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'train_dataset_info.csv')
     
+    if RANK == 0:
+        print(len(train_metadata))
+        
     TRAIN_LEN = len(train_metadata) if PRODUCTION else \
         BATCH_SIZE*WORLD_SIZE*NUM_WORKERS*PREFETCH_FACTOR*2
     TRAIN_START = RANK * (TRAIN_LEN // WORLD_SIZE)
@@ -175,6 +178,8 @@ def main():
     train_dataset = CHD_Dataset(metadata = train_metadata[TRAIN_START:TRAIN_END],
                                 adjacency = adjacency, root = DIRECTORY,
                                 images = images, labels = labels)
+    if RANK == 0:
+        print(len(train_dataset))
     
     if PRODUCTION:
         eval_dataset = CHD_Dataset(metadata = eval_metadata[EVAL_START:EVAL_END],
