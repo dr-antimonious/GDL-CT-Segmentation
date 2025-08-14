@@ -25,6 +25,7 @@ from torchmetrics.collections import MetricCollection
 from torchmetrics.segmentation.dice import DiceScore
 from torchmetrics.segmentation.mean_iou import MeanIoU
 
+from numpy import array
 from os import environ, getenv
 from os.path import exists
 from pandas import read_csv
@@ -153,25 +154,30 @@ def main():
     
     adjacency = __Load_Adjacency__(DIRECTORY + 'ADJACENCY/')
     train_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'train_dataset_info.csv')
-
-    images = [load_nifti(DIRECTORY + 'IMAGES/', idx) \
-              for idx in train_metadata['index'].unique()]
-    labels = [load_nifti(DIRECTORY + 'LABELS/', idx) \
-              for idx in train_metadata['index'].unique()]
     
     TRAIN_LEN = len(train_metadata) if PRODUCTION else \
         BATCH_SIZE*WORLD_SIZE*NUM_WORKERS*PREFETCH_FACTOR*2
     TRAIN_START = RANK * (TRAIN_LEN // WORLD_SIZE)
     TRAIN_END = (RANK + 1) * (TRAIN_LEN // WORLD_SIZE)
-    train_dataset = CHD_Dataset(metadata = train_metadata[TRAIN_START:TRAIN_END],
-                                adjacency = adjacency, root = DIRECTORY,
-                                images = images, labels = labels)
-    
+    indices: list[int] = train_metadata[TRAIN_START:TRAIN_END]['index'].unique().tolist()
+
     eval_dataset = None
     if PRODUCTION:
         eval_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'eval_dataset_info.csv')
         EVAL_START = RANK * (len(eval_metadata) // WORLD_SIZE)
         EVAL_END = (RANK + 1) * (len(eval_metadata) // WORLD_SIZE)
+        indices.append(eval_metadata[EVAL_START:EVAL_END]['index'].unique().tolist())
+
+    uniques: set = set(indices)
+    print(uniques)
+    images = [load_nifti(DIRECTORY + 'IMAGES/', idx) for idx in uniques]
+    labels = [load_nifti(DIRECTORY + 'LABELS/', idx) for idx in uniques]
+
+    train_dataset = CHD_Dataset(metadata = train_metadata[TRAIN_START:TRAIN_END],
+                                adjacency = adjacency, root = DIRECTORY,
+                                images = images, labels = labels)
+    
+    if PRODUCTION:
         eval_dataset = CHD_Dataset(metadata = eval_metadata[EVAL_START:EVAL_END],
                                    adjacency = adjacency, root = DIRECTORY,
                                    images = images, labels = labels)
