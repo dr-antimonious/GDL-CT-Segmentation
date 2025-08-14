@@ -33,9 +33,8 @@ class CHD_Dataset(Dataset):
     super().__init__(root, transform, pre_transform, pre_filter)
 
     self.images: list = images
-    self.image_idxs: list = [str(idx) for idx in self.sample_indices]
     self.labels: list = labels
-    self.label_idxs: list = [str(idx) for idx in self.sample_indices]
+    self.idxs: list = [idx for idx in self.sample_indices]
   
   @property
   def sample_indices(self):
@@ -65,8 +64,8 @@ class CHD_Dataset(Dataset):
     return len(self.metadata)
   
   def get(self, idx):
-    image, label = Extract_And_Convert(im = self.images[self.image_dir.index(str(self.metadata['index'][idx]))],
-                                       la = self.labels[self.label_dir.index(str(self.metadata['index'][idx]))],
+    image, label = Extract_And_Convert(im = self.images[self.idxs.index(self.metadata['index'][idx])],
+                                       la = self.labels[self.idxs.index(self.metadata['index'][idx])],
                                        plane_type = self.metadata['Type'][idx],
                                        plane_index = self.metadata['Indice'][idx])
     adj_matrix = self.adjacency[str(self.metadata['Adjacency_count'][idx])]

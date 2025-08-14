@@ -169,7 +169,6 @@ def main():
         indices += eval_metadata[EVAL_START:EVAL_END]['index'].unique().tolist()
 
     uniques = unique(array(indices))
-    print(uniques)
     images = [load_nifti(DIRECTORY + 'IMAGES/', idx) for idx in uniques]
     labels = [load_nifti(DIRECTORY + 'LABELS/', idx) for idx in uniques]
 
