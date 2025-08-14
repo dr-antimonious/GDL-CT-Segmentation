@@ -45,7 +45,7 @@ def Convert_To_Graph(image: ndarray, label: ndarray) -> tuple[ndarray, ndarray]:
     lab[1::2, :] = lab[1::2, ::-1]
     
     img = img.flatten()
-    img = img.reshape((-1, 1))
+    img = img.reshape((-1, 6))
 
     lab[lab > 7] = 0
     lab = lab.flatten()
