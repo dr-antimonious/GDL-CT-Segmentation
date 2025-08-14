@@ -13,7 +13,6 @@ from torch.nn.parallel import DistributedDataParallel
 from torch.nn import SyncBatchNorm
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
-from torch.utils.data.distributed import DistributedSampler
 from torch.utils.tensorboard.writer import SummaryWriter
 
 from torch_geometric import __version__ as pyg_version
@@ -50,6 +49,12 @@ M_NAMES         = ['Accuracy ', 'Recall ', 'Precision ',
                    'F1-score ', 'IoU-score ']
 M_LOGS          = ['_accuracy_', '_recall_', '_precision_',
                    '_f1_score_', '_iou_score_']
+M_LOOP          = ['ce_loss', 'dice_loss', 'loss', 'accuracy',
+                   'recall', 'precision', 'dice', 'iou']
+M1_NAMES        = [MulticlassAccuracy.__name__,
+                   MulticlassRecall.__name__,
+                   MulticlassPrecision.__name__]
+M2_NAMES        = [DiceScore.__name__, MeanIoU.__name__]
 CHECKPOINT      = 'MODELS/gnn.checkpoint'
 
 PRODUCTION_STR  = getenv('GDL_CT_SEG_PROD')
@@ -73,13 +78,10 @@ def Dice(preds: Tensor, y: Tensor) -> Tensor:
 def loader_loop(rank: int, train: bool, dataloader: DataLoader,
                 model: DistributedDataParallel, scaler: GradScaler|None,
                 loss_module: CrossEntropyLoss, optimizer: ZeroRedundancyOptimizer|None,
-                metrics_1: MetricCollection, metrics_2: MetricCollection) -> \
-                    tuple[Tensor, Tensor, Tensor]:
-    ce_loss = FloatTensor([0.0]).to(rank)
-    d_loss = FloatTensor([0.0]).to(rank)
-    lloss = FloatTensor([0.0]).to(rank)
+                metrics_1: MetricCollection, metrics_2: MetricCollection) -> dict:
+    metrics = {M_LOOP[i]: FloatTensor([0.0]).to(rank) for i in range(len(M_LOOP))}
 
-    for i, batch in enumerate(tqdm(dataloader, disable = rank != 0)):
+    for batch in tqdm(dataloader, disable = rank != 0):
         if train:
             assert optimizer is not None
             optimizer.zero_grad(set_to_none = True)
@@ -95,13 +97,17 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader,
             cel = loss_module(preds, batch.y)
             dl = Dice(preds, batch.y)
             loss = 0.5 * cel + 0.5 * dl
+            m1 = metrics_1.forward(preds, batch.y)
+            m2 = metrics_2.forward(pred_labels.unsqueeze(0), batch.y.unsqueeze(0))
 
-            ce_loss += cel.item()
-            d_loss += dl.item()
-            lloss += loss.item()
+            metrics['ce_loss'] += cel.item()
+            metrics['dice_loss'] += dl.item()
+            metrics['loss'] += loss.item()
 
-            metrics_1.update(preds, batch.y)
-            metrics_2.update(pred_labels.unsqueeze(0), batch.y.unsqueeze(0))
+            for i in range(len(m1)):
+                metrics[M_LOOP[i+3]] = m1[M1_NAMES[i]]
+            for i in range(len(m2)):
+                metrics[M_LOOP[i+6]] = m2[M2_NAMES[i]]
             
         if train:
             assert scaler is not None
@@ -110,42 +116,31 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader,
             scaler.step(optimizer)
             scaler.update()
         
-    return (ce_loss, d_loss, lloss)
+    return metrics
 
-def print_metrics(metrics_1: MetricCollection, metrics_2: MetricCollection,
-                  epoch: int, loss: float, ce_loss: float, dice_loss: float,
-                  writer: SummaryWriter, train: bool):
+def print_metrics(epoch: int, metrics: dict, writer: SummaryWriter, train: bool):
     print('----------TRAINING METRICS----------' if train else \
           '------------EVAL METRICS------------')
 
-    m1 = metrics_1.compute()
-    m2 = metrics_2.compute()
-
-    accuracy = m1[MulticlassAccuracy.__name__]
-    recall = m1[MulticlassRecall.__name__]
-    precision = m1[MulticlassPrecision.__name__]
-    dice_coef = m2[DiceScore.__name__]
-    iou = m2[MeanIoU.__name__]
-
-    metrics = [accuracy, recall, precision, dice_coef, iou]
     PHASE = 'train' if train else 'eval'
 
-    print('Loss: ', loss)
-    writer.add_scalar(PHASE + '_loss', loss, global_step = epoch + 1)
+    print('Loss: ', metrics[M_LOOP[2]].item())
+    writer.add_scalar(PHASE + '_loss', metrics[M_LOOP[2]].item(), global_step = epoch + 1)
 
-    print('CE Loss: ', ce_loss)
-    writer.add_scalar(PHASE + '_ce_loss', ce_loss, global_step = epoch + 1)
+    print('CE Loss: ', metrics[M_LOOP[0]].item())
+    writer.add_scalar(PHASE + '_ce_loss', metrics[M_LOOP[0]].item(), global_step = epoch + 1)
 
-    print('Dice Loss: ', dice_loss)
-    writer.add_scalar(PHASE + '_dice_loss', dice_loss, global_step = epoch + 1)
+    print('Dice Loss: ', metrics[M_LOOP[1]].item())
+    writer.add_scalar(PHASE + '_dice_loss', metrics[M_LOOP[1]].item(), global_step = epoch + 1)
 
-    for m in metrics:
-        for i in range(len(m)):
-            print(M_NAMES[i], i, ': ', m[i])
-            writer.add_scalar(PHASE + M_LOGS[i] + str(i), m[i],
+    for m in range(len(metrics[3:])):
+        vals = metrics[M_LOOP[m]].item()
+        for i in range(len(vals)):
+            print(M_NAMES[m], i, ': ', vals[i])
+            writer.add_scalar(PHASE + M_LOGS[m] + str(i), vals[i],
                               global_step = epoch + 1)
 
-def main(train_dataset: CHD_Dataset, eval_dataset: CHD_Dataset|None):
+def main():
     RANK = int(environ['LOCAL_RANK'])
     set_device(RANK)
     init_process_group('nccl')
@@ -155,25 +150,36 @@ def main(train_dataset: CHD_Dataset, eval_dataset: CHD_Dataset|None):
         print('Torch version: ', torch_version)
         print('GPU available: ', is_available())
         print('GPU count: ', device_count())
+    
+    adjacency = __Load_Adjacency__(DIRECTORY + 'ADJACENCY/')
+    train_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'train_dataset_info.csv')
 
-    train_sampler = DistributedSampler(dataset = train_dataset,
-                                       num_replicas = WORLD_SIZE,
-                                       rank = RANK, shuffle = True)
+    TRAIN_LEN = len(train_metadata) if PRODUCTION else \
+        BATCH_SIZE*WORLD_SIZE*NUM_WORKERS*PREFETCH_FACTOR*2
+    TRAIN_START = RANK * (TRAIN_LEN // WORLD_SIZE)
+    TRAIN_END = (RANK + 1) * (TRAIN_LEN // WORLD_SIZE)
+    train_dataset = CHD_Dataset(metadata = train_metadata[TRAIN_START:TRAIN_END],
+                                adjacency = adjacency, root = DIRECTORY)
+    
+    eval_dataset = None
+    if PRODUCTION:
+        eval_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'eval_dataset_info.csv')
+        EVAL_START = RANK * (len(eval_metadata) // WORLD_SIZE)
+        EVAL_END = (RANK + 1) * (len(eval_metadata) // WORLD_SIZE)
+        eval_dataset = CHD_Dataset(metadata = eval_metadata[EVAL_START + EVAL_END],
+                                   adjacency = adjacency, root = DIRECTORY)
+    
     train_dataloader = DataLoader(dataset = train_dataset,
-                                  sampler = train_sampler,
                                   batch_size = BATCH_SIZE,
                                   num_workers = NUM_WORKERS,
                                   persistent_workers = True,
                                   pin_memory = True, drop_last = True,
-                                  prefetch_factor = PREFETCH_FACTOR)
+                                  prefetch_factor = PREFETCH_FACTOR,
+                                  shuffle = True)
 
     if PRODUCTION:
         assert eval_dataset is not None
-        eval_sampler = DistributedSampler(dataset = eval_dataset,
-                                          num_replicas = WORLD_SIZE,
-                                          rank = RANK, shuffle = True)
         eval_dataloader = DataLoader(dataset = eval_dataset,
-                                     sampler = eval_sampler,
                                      batch_size = BATCH_SIZE,
                                      num_workers = NUM_WORKERS,
                                      persistent_workers = True,
@@ -208,15 +214,15 @@ def main(train_dataset: CHD_Dataset, eval_dataset: CHD_Dataset|None):
     if RANK == 0:
         writer = SummaryWriter('GNN_Experiment')
     
-    metrics_1 = MetricCollection(
-        [Accuracy(task = 'multiclass', average = None, num_classes = 8),
-         Precision(task = 'multiclass', average = None, num_classes = 8),
-         Recall(task = 'multiclass', average = None, num_classes = 8)
-         ]).to(RANK)
-    metrics_2 = MetricCollection(
-        [DiceScore(num_classes = 8, average = None, input_format = 'index'),
-         MeanIoU(num_classes = 8, per_class = True, input_format = 'index')
-         ]).to(RANK)
+    metrics_1 = MetricCollection([
+        Accuracy(task = 'multiclass', average = None, num_classes = 8),
+        Precision(task = 'multiclass', average = None, num_classes = 8),
+        Recall(task = 'multiclass', average = None, num_classes = 8)],
+        ).to(RANK)
+    metrics_2 = MetricCollection([
+        DiceScore(num_classes = 8, average = None, input_format = 'index'),
+        MeanIoU(num_classes = 8, per_class = True, input_format = 'index')]
+        ).to(RANK)
 
     next_decay = T0
     decay_cycle_len = T0
@@ -243,16 +249,10 @@ def main(train_dataset: CHD_Dataset, eval_dataset: CHD_Dataset|None):
         if RANK == 0:
             print('Starting new training')
     
-    print(f"[Rank {RANK}] Dataset len: {len(train_dataset)}, Sampler len: {len(train_sampler)}")
+    print(f"[Rank {RANK}] Dataset len: {len(train_dataset)}")
 
     for epoch in range(FIRST, EPOCHS):
         scheduler.step(epoch)
-        train_sampler.set_epoch(epoch)
-        metrics_1.reset()
-        metrics_2.reset()
-        
-        if PRODUCTION:
-            eval_sampler.set_epoch(epoch)
 
         if epoch == next_decay:
             max_lr *= DECAY
@@ -270,53 +270,49 @@ def main(train_dataset: CHD_Dataset, eval_dataset: CHD_Dataset|None):
             print('Epoch ', epoch + 1)
 
         model.train()
-        (tce_l, td_l, train_loss) = loader_loop(RANK, True, train_dataloader,
-                                                model, scaler, loss_module,
-                                                optimizer, metrics_1, metrics_2)
+        metrics = loader_loop(RANK, True, train_dataloader,
+                              model, scaler, loss_module,
+                              optimizer, metrics_1, metrics_2)
         
-        tce_l /= len(train_dataloader)
-        td_l /= len(train_dataloader)
-        train_loss /= len(train_dataloader)
+        for i in range(len(metrics)):
+            metrics[M_LOOP[i]] /= len(train_dataloader)
 
         barrier()
-        tcel_h = all_reduce(tce_l.detach(), op = ReduceOp.AVG, async_op = True)
-        tdl_h = all_reduce(td_l.detach(), op = ReduceOp.AVG, async_op = True)
-        tl_h = all_reduce(train_loss.detach(), op = ReduceOp.AVG, async_op = True)
+        handles = []
+        for i in range(len(metrics)):
+            handles.append(all_reduce(metrics[M_LOOP[i]].detach(),
+                                      op = ReduceOp.AVG, async_op = True))
         
-        for h in [tcel_h, tdl_h, tl_h]:
+        for h in handles:
             assert h is not None
             h.wait()
 
         if RANK == 0:
-            print_metrics(metrics_1, metrics_2, epoch, train_loss.item(),
-                          tce_l.item(), td_l.item(), writer, True)
+            print_metrics(epoch, metrics, writer, True)
 
         if will_validate:
-            metrics_1.reset()
-            metrics_2.reset()
             model.eval()
             
             with no_grad():
-                (ece_l, ed_l, eval_loss) = loader_loop(RANK, False, eval_dataloader,
-                                                       model, None, loss_module,
-                                                       None, metrics_1, metrics_2)
+                metrics = loader_loop(RANK, False, eval_dataloader,
+                                      model, None, loss_module,
+                                      None, metrics_1, metrics_2)
             
-            ece_l /= len(eval_dataloader)
-            ed_l /= len(eval_dataloader)
-            eval_loss /= len(eval_dataloader)
+            for i in range(len(metrics)):
+                metrics[M_LOOP[i]] /= len(train_dataloader)
 
             barrier()
-            ecel_h = all_reduce(ece_l.detach(), op = ReduceOp.AVG, async_op = True)
-            edl_h = all_reduce(ed_l.detach(), op = ReduceOp.AVG, async_op = True)
-            el_h = all_reduce(eval_loss.detach(), op = ReduceOp.AVG, async_op = True)
-
-            for h in [ecel_h, edl_h, el_h]:
+            handles = []
+            for i in range(len(metrics)):
+                handles.append(all_reduce(metrics[M_LOOP[i]].detach(),
+                                          op = ReduceOp.AVG, async_op = True))
+            
+            for h in handles:
                 assert h is not None
                 h.wait()
-        
+
             if RANK == 0:
-                print_metrics(metrics_1, metrics_2, epoch, eval_loss.item(),
-                              ece_l.item(), ed_l.item(), writer, False)
+                print_metrics(epoch, metrics, writer, True)
 
         if PRODUCTION and RANK == 0:
             checkpoint_path = 'MODELS/gnn_' + str(epoch + 1) + '.checkpoint'
@@ -335,18 +331,4 @@ def main(train_dataset: CHD_Dataset, eval_dataset: CHD_Dataset|None):
         
 if __name__ == '__main__':
     environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
-
-    adjacency = __Load_Adjacency__(DIRECTORY + 'ADJACENCY/')
-    train_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'train_dataset_info.csv')
-    train_dataset = CHD_Dataset(metadata = train_metadata if PRODUCTION else \
-                                train_metadata[:BATCH_SIZE*WORLD_SIZE*NUM_WORKERS*PREFETCH_FACTOR*2],
-                                adjacency = adjacency,
-                                root = DIRECTORY)
-    
-    eval_dataset = None
-    if PRODUCTION:
-        eval_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'eval_dataset_info.csv')
-        eval_dataset = CHD_Dataset(metadata = eval_metadata, adjacency = adjacency,
-                                   root = DIRECTORY)
-    
-    main(train_dataset, eval_dataset)
+    main()

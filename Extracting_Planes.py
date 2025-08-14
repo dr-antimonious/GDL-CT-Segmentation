@@ -1,4 +1,3 @@
-from nibabel.loadsave import load
 from numpy import ndarray, array, int32, uint8
 
 def Convert_To_Graph(image: ndarray, label: ndarray) -> tuple[ndarray, ndarray]:
@@ -22,8 +21,7 @@ def Convert_To_Graph(image: ndarray, label: ndarray) -> tuple[ndarray, ndarray]:
     lab = lab.flatten()
     return (img, lab)
 
-def Extract_And_Convert(path_to_image: str, path_to_label: str,
-                        plane_type: str, plane_index: int) \
+def Extract_And_Convert(im, la, plane_type: str, plane_index: int) \
                         -> tuple[ndarray, ndarray]:
     r"""
         Arguments:
@@ -37,14 +35,14 @@ def Extract_And_Convert(path_to_image: str, path_to_label: str,
     """
     match plane_type:
         case 'A': # Axial plane
-            image = load(path_to_image).dataobj[:, :, plane_index]
-            label = load(path_to_label).dataobj[:, :, plane_index]
+            image = im[:, :, plane_index]
+            label = la[:, :, plane_index]
         case 'C': # Coronal plane
-            image = load(path_to_image).dataobj[:, plane_index, :]
-            label = load(path_to_label).dataobj[:, plane_index, :]
+            image = im[:, plane_index, :]
+            label = la[:, plane_index, :]
         case 'S': # Sagittal plane
-            image = load(path_to_image).dataobj[plane_index, :, :]
-            label = load(path_to_label).dataobj[plane_index, :, :]
+            image = im[plane_index, :, :]
+            label = la[plane_index, :, :]
         case _:
             raise ValueError('Invalid plane_type in Extract_And_Convert', plane_type)
     return Convert_To_Graph(image, label)

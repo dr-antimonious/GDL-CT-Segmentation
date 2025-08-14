@@ -1,9 +1,15 @@
 from torch import FloatTensor, LongTensor
 from torch_geometric.data import Data, Dataset
+
 from numpy import load, array, int64
+from nibabel.loadsave import load
 from os import listdir
 from pandas import DataFrame
+
 from Extracting_Planes import Extract_And_Convert
+
+def load_nifti(dir: str, idx: int):
+  return {idx, load(dir + str(idx) + '.nii.gz').get_fdata()}
 
 class CHD_Dataset(Dataset):
   r"""
@@ -25,13 +31,20 @@ class CHD_Dataset(Dataset):
     self.adjacency = adjacency
 
     super().__init__(root, transform, pre_transform, pre_filter)
+
+    self.images = {idx: load_nifti(self.image_dir, idx) for idx in self.sample_indices}
+    self.labels = {idx: load_nifti(self.label_dir, idx) for idx in self.sample_indices}
   
+  @property
+  def sample_indices(self):
+    return self.metadata['index'].unique()
+
   @property
   def raw_file_names(self):
     return array([[
       ('IMAGES/' + str(x) + '.nii.gz'),
       ('LABELS/' + str(x) + '.nii.gz')]
-      for x in self.metadata['index'].unique()]) \
+      for x in self.sample_indices]) \
         .flatten().tolist()
   
   @property
@@ -50,12 +63,10 @@ class CHD_Dataset(Dataset):
     return len(self.metadata)
   
   def get(self, idx):
-    image, label = Extract_And_Convert(path_to_image = self.image_dir \
-                                        + str(self.metadata['index'][idx]) + '.nii.gz',
-                                      path_to_label = self.label_dir \
-                                        + str(self.metadata['index'][idx]) + '.nii.gz',
-                                      plane_type = self.metadata['Type'][idx],
-                                      plane_index = self.metadata['Indice'][idx])
+    image, label = Extract_And_Convert(im = self.images[self.metadata['index'][idx]],
+                                       la = self.labels[self.metadata['index'][idx]],
+                                       plane_type = self.metadata['Type'][idx],
+                                       plane_index = self.metadata['Indice'][idx])
     adj_matrix = self.adjacency[str(self.metadata['Adjacency_count'][idx])]
     return Data(x = FloatTensor(image),
                 edge_index = adj_matrix,
