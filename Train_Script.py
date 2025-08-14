@@ -45,7 +45,7 @@ SMOOTH          = 1e-6
 BATCH_SIZE      = 24
 NUM_WORKERS     = 4
 PREFETCH_FACTOR = 2
-EPOCHS          = 200
+EPOCHS          = 300
 WORLD_SIZE      = device_count()
 M_NAMES         = ['Accuracy ', 'Recall ', 'Precision ',
                    'F1-score ', 'IoU-score ']
