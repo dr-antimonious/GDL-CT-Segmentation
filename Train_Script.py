@@ -210,7 +210,11 @@ def main():
                          143205882., 190230471.,
                          82210947., 67981614.]).to(RANK)
     weights = log1p(1.0 / freqs)
+    if RANK == 0:
+        print(weights)
     weights /= weights.sum()
+    if RANK == 0:
+        print(weights)
     loss_module = CrossEntropyLoss(ignore_index = 0,
                                    weight = weights)
     optimizer = ZeroRedundancyOptimizer(model.parameters(),
