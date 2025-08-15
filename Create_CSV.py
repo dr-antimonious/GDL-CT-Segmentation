@@ -50,6 +50,7 @@ def main():
 
     chds = get_counts(dataset_info, chd_names)
     print(chds)
+    print(dataset_info)
 
 if __name__ == '__main__':
     main()
