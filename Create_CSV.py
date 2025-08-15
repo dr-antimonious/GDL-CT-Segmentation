@@ -15,8 +15,7 @@ EVAL_PORTION        = 0.2
 TEST_PORTION        = 0.1
 
 def get_counts(data: pd.DataFrame, names: list) -> dict[str, dict[str, int]]:
-    print(data[names[0]].value_counts())
-    chd_counts = [int(data[chd].value_counts()[1.0]) for chd in names]
+    chd_counts = [int(len(data[data[chd] == 1])) for chd in names]
     chds = sorted(zip(names, chd_counts), key = lambda x: (x[1], x[0]))
     print(chds)
 
