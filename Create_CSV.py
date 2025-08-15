@@ -18,9 +18,13 @@ def get_counts(data: pd.DataFrame, names: list) -> dict[str, int]:
     print(chds)
 
     chd, count = chds[0]
-    train_count = floor(count * TRAIN_PORTION)
-    eval_count = ceil(count * EVAL_PORTION)
-    test_count = ceil(count * TEST_PORTION)
+    train_count = int(floor(count * TRAIN_PORTION))
+
+    if chd == 'PDA':
+        train_count -= 1
+
+    eval_count = int(ceil(count * EVAL_PORTION))
+    test_count = int(ceil(count * TEST_PORTION))
     print('chd: ' + chd + ', train: ' + str(train_count) \
            + ', eval: ' + str(eval_count) + ', test: ' + str(test_count) \
             + ', should be sum: ' + str(count))
