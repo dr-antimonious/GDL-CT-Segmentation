@@ -34,7 +34,7 @@ def get_counts(data: pd.DataFrame, names: list) -> dict[str, int]:
         chd + '_test': test_count
     }
 
-    if len(names) == 0:
+    if len(names) != 0:
         result.update(get_counts(data, names))
     return result
 
