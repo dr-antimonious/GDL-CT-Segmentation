@@ -88,11 +88,13 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader,
         with autocast(device_type='cuda'):
             preds = model(x = batch.x, adj_matrix = batch.edge_index)
             _, pred_labels = torchmax(preds, dim = 1)
-
-            loss = loss_module(preds, batch.y).float()
+            
             m1 = metrics_1(preds, batch.y)
             m2 = metrics_2(pred_labels.unsqueeze(0), batch.y.unsqueeze(0))
 
+            preds = preds.T.unsqueeze(0)
+            batch.y = batch.y.view(1, 1, -1)
+            loss = loss_module(preds, batch.y).float()
             metrics['loss'] += loss.detach().float().item()
 
             for i in range(len(m1)):
@@ -199,8 +201,10 @@ def main():
         print(weights)
 
     loss_module = DiceCELoss(include_background = False,
+                             label_smoothing = 0.1,
+                             to_onehot_y = True,
                              weight = weights,
-                             label_smoothing = 0.1)
+                             softmax = True)
     optimizer = ZeroRedundancyOptimizer(model.parameters(),
                                         optimizer_class = AdamW,
                                         lr = LR, weight_decay = 0) # No weight decay with PReLU
