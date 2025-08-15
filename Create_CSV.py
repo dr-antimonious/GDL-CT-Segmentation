@@ -53,9 +53,8 @@ def main():
     dataset_info = pd.read_csv(filepath_or_buffer = DIRECTORY + "patient_info.csv")
     chd_names = ['ASD', 'VSD', 'AVSD', 'ToF', 'TGA', 'CA', 'PA', 'PDA']
 
-    for chd_split in chds:
-        print(chd_split)
-        chd_info = dataset_info[chd_split[0]]
+    for chd, _ in chds:
+        chd_info = dataset_info[chd[0] == 1]
         print(chd_info)
 
 if __name__ == '__main__':
