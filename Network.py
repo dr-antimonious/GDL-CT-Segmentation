@@ -69,22 +69,26 @@ class CHD_GNN(Module):
         )
 
         alpha = self.params[0].float()
+        res = (1 - alpha) * x2.float() + alpha * x3.float()
         x4 = self.layers[3].forward(
-            x = (1 - alpha) * x2.float() + alpha * x3.float(),
+            x = res.to(x3.dtype),
             edge_index = adj_matrix
         )
 
         alpha = self.params[1].float()
+        res = (1 - alpha) * x3.float() + alpha * x4.float()
         x5 = self.layers[4].forward(
-            x = (1 - alpha) * x3.float() + alpha * x4.float(),
+            x = res.to(x4.dtype),
             edge_index = adj_matrix
         )
 
         alpha = self.params[2].float()
         w = softmax(alpha, dim = 0)
-        x6 = self.layers[5].forward(x = w[0] * x2.float() + w[1] * x4.float() + w[2] * x5.float())
+        res = w[0] * x2.float() + w[1] * x4.float() + w[2] * x5.float()
+        x6 = self.layers[5].forward(x = res.to(x5.dtype))
 
         alpha = self.params[3].float()
-        x7 = self.layers[6].forward((1 - alpha) * x1.float() + alpha * x6.float())
+        res = (1 - alpha) * x1.float() + alpha * x6.float()
+        x7 = self.layers[6].forward(res.to(x6.dtype))
 
         return x7
