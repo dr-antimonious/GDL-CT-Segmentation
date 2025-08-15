@@ -3,7 +3,7 @@ import nibabel.loadsave as nib
 from random import sample
 from tqdm import tqdm
 
-DIRECTORY = "/home/ubuntu/proj/ImageCHD_dataset"
+DIRECTORY = "/home/ubuntu/proj/ImageCHD_dataset/"
 DATASET_INFO_PATH = DIRECTORY + "imageCHD_dataset_info.xlsx"
 SCAN_INFO_PATH = DIRECTORY + "imagechd_dataset_image_info.xlsx"
 CHDS = ['ASD', 'VSD', 'AVSD', 'ToF', 'TGA', 'CA', 'PA', 'PDA']
