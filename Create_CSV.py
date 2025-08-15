@@ -53,7 +53,8 @@ def main():
     mask = [(x.date() - y.date()).days > 10 * 365 \
             for x, y in zip(dataset_info['AcquisitionDate'], dataset_info['PatientBirthDate'])] 
     dataset_info.drop(dataset_info.loc[mask].index, inplace = True)
-    chd_names = ["ASD", "VSD", "AVSD", "ToF", "CA", "PA", "PDA"]
+    chd_names = ["ASD", "VSD", "AVSD", "TGA", "ToF", "CA", "PA", "PDA",
+                "DSVC", "DORV", "CAT", "APVC", "AAH", "DAA", "IAA", "PAS"]
 
     chds = get_counts(dataset_info, chd_names)
     print(chds)
@@ -61,7 +62,8 @@ def main():
     dataset_info = ProcessSpreadsheets(DIRECTORY + 'imageCHD_dataset_info.xlsx',
                                        DIRECTORY + 'imagechd_dataset_image_info.xlsx')
     dataset_info.drop(dataset_info.loc[mask].index, inplace = True)
-    chd_names = ["ASD", "VSD", "AVSD", "ToF", "CA", "PA", "PDA"]
+    chd_names = ["ASD", "VSD", "AVSD", "TGA", "ToF", "CA", "PA", "PDA",
+                "DSVC", "DORV", "CAT", "APVC", "AAH", "DAA", "IAA", "PAS"]
 
     for chd_split in chds.keys():
         mask = dataset_info[chd_split] == 1

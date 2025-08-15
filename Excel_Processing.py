@@ -14,8 +14,7 @@ def ProcessSpreadsheets(dataset_info_path, scan_info_path) -> pd.DataFrame:
     dataset_info = pd.concat([dataset_info, scan_info], axis = 1)
 
     ignore = dataset_info[dataset_info["IGNORED"] > 0].index
-    drop_cols = ["DSVC", "DORV", "TGA", "CAT", "APVC", "AAH", "DAA", "IAA", "PAS",
-                "NORMAL", "ONLYFIRST8", "FIRST8+MORE", "NORMAL.1", "IGNORED",
+    drop_cols = ["NORMAL", "ONLYFIRST8", "FIRST8+MORE", "NORMAL.1", "IGNORED",
                 "idx", "PatientBirthDate1", "AcquisitionDate1",
                 "PixelSpacing1", "PixelSpacing2", "calculate_z_thick",
                 "ManufacturerModelName", "AGE", "UNKNOWN"]
@@ -25,7 +24,8 @@ def ProcessSpreadsheets(dataset_info_path, scan_info_path) -> pd.DataFrame:
                             .reset_index() \
                             .drop("level_0", axis = 1)
 
-    nan_cols = ["ASD", "VSD", "AVSD", "ToF", "CA", "PA", "PDA"]
+    nan_cols = ["ASD", "VSD", "AVSD", "TGA", "ToF", "CA", "PA", "PDA",
+                "DSVC", "DORV", "CAT", "APVC", "AAH", "DAA", "IAA", "PAS"]
     for col in nan_cols:
         mask = dataset_info[dataset_info[col] != 1].index
         dataset_info.loc[mask, col] = 0
