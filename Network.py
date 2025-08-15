@@ -13,7 +13,8 @@ class CHD_GNN(Module):
         -> Sequential:
         return Sequential('x', [
             (Linear(in_channels, out_channels), 'x -> x'),
-            (BatchNorm(out_channels), 'x -> x'),
+            (BatchNorm(out_channels,
+                       track_running_stats = False), 'x -> x'),
             (PReLU(out_channels), 'x -> x')
         ])
     
@@ -24,7 +25,8 @@ class CHD_GNN(Module):
                      out_channels,
                      alpha, K),
                      'x, edge_index -> x'),
-            (BatchNorm(out_channels), 'x -> x'),
+            (BatchNorm(out_channels,
+                       track_running_stats = False), 'x -> x'),
             (PReLU(out_channels), 'x -> x')
         ])
     
@@ -65,16 +67,24 @@ class CHD_GNN(Module):
             x = x2,
             edge_index = adj_matrix
         )
+
+        alpha = self.params[0].float()
         x4 = self.layers[3].forward(
-            x = (1 - self.params[0]) * x2 + self.params[0] * x3,
+            x = (1 - alpha) * x2.float() + alpha * x3.float(),
             edge_index = adj_matrix
         )
+
+        alpha = self.params[1].float()
         x5 = self.layers[4].forward(
-            x = (1 - self.params[1]) * x3 + self.params[1] * x4,
+            x = (1 - alpha) * x3.float() + alpha * x4.float(),
             edge_index = adj_matrix
         )
-        w = softmax(self.params[2], dim = 0)
-        x6 = self.layers[5].forward(x = w[0] * x2 + w[1] * x4 + w[2] * x5)
-        x7 = self.layers[6].forward((1 - self.params[3]) * x1 + self.params[3] * x6)
+
+        alpha = self.params[2].float()
+        w = softmax(alpha, dim = 0)
+        x6 = self.layers[5].forward(x = w[0] * x2.float() + w[1] * x4.float() + w[2] * x5.float())
+
+        alpha = self.params[3].float()
+        x7 = self.layers[6].forward((1 - alpha) * x1.float() + alpha * x6.float())
 
         return x7

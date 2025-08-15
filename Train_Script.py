@@ -66,14 +66,14 @@ assert DIRECTORY is not None
 PRODUCTION      = PRODUCTION_STR.lower() == 'true'
 
 def Dice(preds: Tensor, y: Tensor) -> Tensor:
-    probs = softmax(preds, dim = 1)[:, 1:]
+    probs = softmax(preds.float(), dim = 1)[:, 1:]
     targs = one_hot(y, num_classes = 8).float()[:, 1:]
 
     dims = (0)
     intersection = sum(probs * targs, dims)
     union = sum(probs + targs, dims)
 
-    dice_coef = (2. * intersection + SMOOTH) / (union + SMOOTH)
+    dice_coef = (2. * intersection + SMOOTH) / (union.clamp(min = SMOOTH) + SMOOTH)
     dice_loss = 1. - dice_coef
     return dice_loss.mean()
 
@@ -205,15 +205,17 @@ def main():
         [RANK]
     )
 
+    weights = FloatTensor([11108352000./10420281390.,
+                           11108352000./47325435.,
+                           11108352000./46453197.,
+                           11108352000./110663064.,
+                           11108352000./143205882.,
+                           11108352000./190230471.,
+                           11108352000./82210947.,
+                           11108352000./67981614.]).to(RANK)
+    weights /= weights.sum()
     loss_module = CrossEntropyLoss(ignore_index = 0,
-                                   weight = FloatTensor([11108352000./10420281390.,
-                                                         11108352000./47325435.,
-                                                         11108352000./46453197.,
-                                                         11108352000./110663064.,
-                                                         11108352000./143205882.,
-                                                         11108352000./190230471.,
-                                                         11108352000./82210947.,
-                                                         11108352000./67981614.]).to(RANK))
+                                   weight = weights)
     optimizer = ZeroRedundancyOptimizer(model.parameters(),
                                         optimizer_class = AdamW,
                                         lr = LR, weight_decay = 0) # No weight decay with PReLU
