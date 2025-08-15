@@ -12,7 +12,7 @@ TRAIN_PORTION       = 0.7
 EVAL_PORTION        = 0.2
 TEST_PORTION        = 0.1
 
-def get_counts(data: pd.DataFrame, names: list) -> dict[str, int]:
+def get_counts(data: pd.DataFrame, names: list) -> dict[str, dict[str, int]]:
     chd_counts = [int(data[chd].value_counts()[1.0]) for chd in CHD_NAMES]
     chds = sorted(zip(names, chd_counts), key = lambda x: (x[1], x[0]))
     print(chds)
@@ -33,9 +33,11 @@ def get_counts(data: pd.DataFrame, names: list) -> dict[str, int]:
     names.remove(chd)
 
     result = {
-        chd + '_train': train_count,
-        chd + '_eval': eval_count,
-        chd + '_test': test_count
+        chd: {
+            'train': train_count,
+            'eval': eval_count,
+            'test': test_count
+        }
     }
 
     if len(names) != 0:
