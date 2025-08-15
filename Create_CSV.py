@@ -19,8 +19,8 @@ for chd, _ in chds[:-1]:
     dataset_info.drop(dataset_info.loc[dataset_info[chd] == 1].index, inplace = True)
     chd_names.remove(chd)
     chd_counts = [int(dataset_info[chd].value_counts()[1.0]) for chd in CHD_NAMES]
-    chdss = sorted(zip(chd_names, chd_counts), key = lambda x: x[1])
-    print(chdss)
+    chds = sorted(zip(chd_names, chd_counts), key = lambda x: x[1])
+    print(chds)
 
 # axial_count = [nib.load("C:\\Users\\leotu\\Downloads\\ImageCHD_dataset\\ImageCHD_dataset\\ct_" \
 #                          + str(x) + "_image.nii.gz") \
