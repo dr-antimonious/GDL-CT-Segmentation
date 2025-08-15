@@ -19,7 +19,7 @@ def ProcessSpreadsheets(dataset_info_path, scan_info_path) -> pd.DataFrame:
                 "PixelSpacing1", "PixelSpacing2", "calculate_z_thick",
                 "ManufacturerModelName", "AGE", "UNKNOWN"]
 
-    dataset_info = dataset_info.drop(dataset_info[dataset_info.loc['COUNT'] > 2].index) \
+    dataset_info = dataset_info.drop(dataset_info.loc[dataset_info['COUNT'] > 2].index) \
       .drop(drop_cols, axis = 1) \
         .reset_index() \
           .drop("level_0", axis = 1)
