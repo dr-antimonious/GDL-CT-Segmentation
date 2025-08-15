@@ -54,6 +54,7 @@ def main():
     chd_names = ['ASD', 'VSD', 'AVSD', 'ToF', 'TGA', 'CA', 'PA', 'PDA']
 
     for chd_split in chds:
+        print(chd_split)
         chd_info = dataset_info[chd_split[0]]
         print(chd_info)
 
