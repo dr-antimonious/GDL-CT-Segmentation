@@ -10,7 +10,8 @@ from torch.distributed.optim import ZeroRedundancyOptimizer
 from torch.nn.parallel import DistributedDataParallel
 from torch.nn import SyncBatchNorm
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, \
+    LinearLR, SequentialLR
 from torch.utils.tensorboard.writer import SummaryWriter
 
 from torch_geometric import __version__ as pyg_version
@@ -39,6 +40,8 @@ LR              = 1e-3
 T0              = 15
 TMULT           = 2
 MIN_LR          = 1e-5
+WARM_FACT       = 0.1
+WARM_ITER       = 5
 SMOOTH          = 1e-6
 BATCH_SIZE      = 24
 NUM_WORKERS     = 4
@@ -194,7 +197,7 @@ def main():
     if RANK == 0:
         print(weights)
 
-    weights[0] += 0.5
+    weights[0] += 0.25
     weights /= weights.sum()
 
     if RANK == 0:
@@ -222,8 +225,10 @@ def main():
         Recall(task = 'multiclass', average = None, num_classes = 8)],
         ).to(RANK)
     metrics_2 = MetricCollection([
-        DiceScore(num_classes = 8, average = None, input_format = 'index'),
-        MeanIoU(num_classes = 8, per_class = True, input_format = 'index')]
+        DiceScore(num_classes = 8, average = None,
+                  input_format = 'index', nan_score = 0.0),
+        MeanIoU(num_classes = 8, per_class = True,
+                input_format = 'index', nan_score = 0.0)]
         ).to(RANK)
 
     if exists(CHECKPOINT):
