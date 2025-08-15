@@ -36,11 +36,10 @@ from tqdm import tqdm
 from Network import CHD_GNN
 from Utilities import CHD_Dataset, __Load_Adjacency__, load_nifti
 
-LR              = 1e-2
+LR              = 1e-3
 T0              = 15
 TMULT           = 2
 MIN_LR          = 1e-5
-DECAY           = 0.95
 SMOOTH          = 1e-6
 BATCH_SIZE      = 24
 NUM_WORKERS     = 4
@@ -65,7 +64,13 @@ assert PRODUCTION_STR is not None
 assert DIRECTORY is not None
 PRODUCTION      = PRODUCTION_STR.lower() == 'true'
 
-def Dice(preds: Tensor, y: Tensor) -> Tensor:
+FREQS = FloatTensor([10420281390., 47325435.,
+                     46453197., 110663064.,
+                     143205882., 190230471.,
+                     82210947., 67981614.])
+INV_FREQS = (1.0 / FREQS) ** 2
+
+def Dice(preds: Tensor, y: Tensor, inv_freqs: Tensor) -> Tensor:
     probs = softmax(preds.float(), dim = 1)[:, 1:]
     targs = one_hot(y, num_classes = 8).float()[:, 1:]
 
@@ -75,9 +80,10 @@ def Dice(preds: Tensor, y: Tensor) -> Tensor:
 
     dice_coef = (2. * intersection + SMOOTH) / (union.clamp(min = SMOOTH) + SMOOTH)
     dice_loss = 1. - dice_coef
+    dice_loss *= inv_freqs[1:]
     return dice_loss.mean()
 
-def loader_loop(rank: int, train: bool, dataloader: DataLoader,
+def loader_loop(rank: int, train: bool, dataloader: DataLoader, inv_freqs: Tensor,
                 model: DistributedDataParallel, scaler: GradScaler|None,
                 loss_module: CrossEntropyLoss, optimizer: ZeroRedundancyOptimizer|None,
                 metrics_1: MetricCollection, metrics_2: MetricCollection) -> dict:
@@ -99,7 +105,7 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader,
             _, pred_labels = torchmax(preds, dim = 1)
 
             cel = loss_module(preds, batch.y).float()
-            dl = Dice(preds, batch.y).float()
+            dl = Dice(preds, batch.y, inv_freqs).float()
             loss = (0.5 * cel + 0.5 * dl).float()
             m1 = metrics_1(preds, batch.y)
             m2 = metrics_2(pred_labels.unsqueeze(0), batch.y.unsqueeze(0))
@@ -205,18 +211,23 @@ def main():
         [RANK]
     )
 
-    freqs = FloatTensor([10420281390., 47325435.,
-                         46453197., 110663064.,
-                         143205882., 190230471.,
-                         82210947., 67981614.]).to(RANK)
-    weights = log(freqs.max() / freqs) + 10e-6
+    freqs = FREQS.to(RANK)
+    inv_freqs = INV_FREQS.to(RANK)
+    inv_freqs /= inv_freqs.sum()
+    weights = log(freqs.max() / freqs)
+
     if RANK == 0:
         print(weights)
+
+    weights[0] += 0.5
     weights /= weights.sum()
+
     if RANK == 0:
         print(weights)
+
     loss_module = CrossEntropyLoss(ignore_index = 0,
-                                   weight = weights)
+                                   weight = weights,
+                                   label_smoothing = 0.1)
     optimizer = ZeroRedundancyOptimizer(model.parameters(),
                                         optimizer_class = AdamW,
                                         lr = LR, weight_decay = 0) # No weight decay with PReLU
@@ -266,7 +277,7 @@ def main():
 
         model.train()
         metrics = loader_loop(RANK, True, train_dataloader,
-                              model, scaler, loss_module,
+                              inv_freqs, model, scaler, loss_module,
                               optimizer, metrics_1, metrics_2)
         
         for i in range(len(metrics)):
@@ -290,7 +301,7 @@ def main():
             
             with no_grad():
                 metrics = loader_loop(RANK, False, eval_dataloader,
-                                      model, None, loss_module,
+                                      inv_freqs, model, None, loss_module,
                                       None, metrics_1, metrics_2)
             
             for i in range(len(metrics)):
