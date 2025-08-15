@@ -1,14 +1,12 @@
 from torch import __version__ as torch_version
 from torch import max as torchmax
-from torch import Tensor, FloatTensor, save, load, no_grad, sum, zeros, log
+from torch import FloatTensor, save, load, no_grad, zeros, log
 from torch.amp.autocast_mode import autocast
 from torch.amp.grad_scaler import GradScaler
 from torch.cuda import is_available, device_count, set_device, empty_cache
 from torch.distributed import init_process_group, destroy_process_group, \
     all_reduce, ReduceOp, barrier
 from torch.distributed.optim import ZeroRedundancyOptimizer
-from torch.nn import CrossEntropyLoss
-from torch.nn.functional import softmax, one_hot
 from torch.nn.parallel import DistributedDataParallel
 from torch.nn import SyncBatchNorm
 from torch.optim import AdamW
@@ -26,6 +24,7 @@ from torchmetrics.segmentation.dice import DiceScore
 from torchmetrics.segmentation.mean_iou import MeanIoU
 
 from gc import collect
+from monai.losses.dice import DiceCELoss
 from numpy import array, unique
 from os import environ, getenv
 from os.path import exists
@@ -50,8 +49,8 @@ M_NAMES         = ['Accuracy ', 'Recall ', 'Precision ',
                    'F1-score ', 'IoU-score ']
 M_LOGS          = ['_accuracy_', '_recall_', '_precision_',
                    '_f1_score_', '_iou_score_']
-M_LOOP          = ['ce_loss', 'dice_loss', 'loss', 'accuracy',
-                   'recall', 'precision', 'dice', 'iou']
+M_LOOP          = ['loss', 'accuracy', 'recall',
+                   'precision', 'dice', 'iou']
 M1_NAMES        = [MulticlassAccuracy.__name__,
                    MulticlassRecall.__name__,
                    MulticlassPrecision.__name__]
@@ -68,31 +67,17 @@ FREQS = FloatTensor([10420281390., 47325435.,
                      46453197., 110663064.,
                      143205882., 190230471.,
                      82210947., 67981614.])
-INV_FREQS = (1.0 / FREQS) ** 2
 
-def Dice(preds: Tensor, y: Tensor, inv_freqs: Tensor) -> Tensor:
-    probs = softmax(preds.float(), dim = 1)[:, 1:]
-    targs = one_hot(y, num_classes = 8).float()[:, 1:]
-
-    dims = (0)
-    intersection = sum(probs * targs, dims)
-    union = sum(probs + targs, dims)
-
-    dice_coef = (2. * intersection + SMOOTH) / (union.clamp(min = SMOOTH) + SMOOTH)
-    dice_loss = 1. - dice_coef
-    dice_loss *= inv_freqs[1:]
-    return dice_loss.mean()
-
-def loader_loop(rank: int, train: bool, dataloader: DataLoader, inv_freqs: Tensor,
+def loader_loop(rank: int, train: bool, dataloader: DataLoader,
                 model: DistributedDataParallel, scaler: GradScaler|None,
-                loss_module: CrossEntropyLoss, optimizer: ZeroRedundancyOptimizer|None,
+                loss_module: DiceCELoss, optimizer: ZeroRedundancyOptimizer|None,
                 metrics_1: MetricCollection, metrics_2: MetricCollection) -> dict:
     metrics_1.reset()
     metrics_2.reset()
     
-    metrics = {M_LOOP[i]: zeros(1, device = rank) for i in range(3)}
+    metrics = {M_LOOP[0]: zeros(1, device = rank)}
     metrics.update([(M_LOOP[i], zeros(8, device = rank)) \
-                    for i in range(3, len(M_LOOP))])
+                    for i in range(1, len(M_LOOP))])
 
     for batch in tqdm(dataloader, disable = rank != 0):
         if train:
@@ -104,20 +89,16 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader, inv_freqs: Tenso
             preds = model(x = batch.x, adj_matrix = batch.edge_index)
             _, pred_labels = torchmax(preds, dim = 1)
 
-            cel = loss_module(preds, batch.y).float()
-            dl = Dice(preds, batch.y, inv_freqs).float()
-            loss = (0.5 * cel + 0.5 * dl).float()
+            loss = loss_module(preds, batch.y).float()
             m1 = metrics_1(preds, batch.y)
             m2 = metrics_2(pred_labels.unsqueeze(0), batch.y.unsqueeze(0))
 
-            metrics['ce_loss'] += cel.detach().float().item()
-            metrics['dice_loss'] += dl.detach().float().item()
             metrics['loss'] += loss.detach().float().item()
 
             for i in range(len(m1)):
-                metrics[M_LOOP[i+3]] += m1[M1_NAMES[i]].detach().float()
+                metrics[M_LOOP[i+1]] += m1[M1_NAMES[i]].detach().float()
             for i in range(len(m2)):
-                metrics[M_LOOP[i+6]] += m2[M2_NAMES[i]].detach().float()
+                metrics[M_LOOP[i+4]] += m2[M2_NAMES[i]].detach().float()
             
         if train:
             assert scaler is not None
@@ -134,20 +115,14 @@ def print_metrics(epoch: int, metrics: dict, writer: SummaryWriter, train: bool)
 
     PHASE = 'train' if train else 'eval'
 
-    print('Loss: ', metrics[M_LOOP[2]].item())
-    writer.add_scalar(PHASE + '_loss', metrics[M_LOOP[2]].item(), global_step = epoch + 1)
+    print('Loss: ', metrics[M_LOOP[0]].item())
+    writer.add_scalar(PHASE + '_loss', metrics[M_LOOP[0]].item(), global_step = epoch + 1)
 
-    print('CE Loss: ', metrics[M_LOOP[0]].item())
-    writer.add_scalar(PHASE + '_ce_loss', metrics[M_LOOP[0]].item(), global_step = epoch + 1)
-
-    print('Dice Loss: ', metrics[M_LOOP[1]].item())
-    writer.add_scalar(PHASE + '_dice_loss', metrics[M_LOOP[1]].item(), global_step = epoch + 1)
-
-    for m in range(3, len(metrics)):
+    for m in range(1, len(metrics)):
         vals = metrics[M_LOOP[m]]
         for i in range(len(vals)):
-            print(M_NAMES[m-3], i, ': ', vals[i].item())
-            writer.add_scalar(PHASE + M_LOGS[m-3] + str(i), vals[i].item(),
+            print(M_NAMES[m-1], i, ': ', vals[i].item())
+            writer.add_scalar(PHASE + M_LOGS[m-1] + str(i), vals[i].item(),
                               global_step = epoch + 1)
 
 def main():
@@ -165,7 +140,7 @@ def main():
     train_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'train_dataset_info.csv')
 
     TRAIN_LEN = len(train_metadata) if PRODUCTION else \
-        BATCH_SIZE*WORLD_SIZE*NUM_WORKERS*PREFETCH_FACTOR*2
+        BATCH_SIZE * WORLD_SIZE * NUM_WORKERS * PREFETCH_FACTOR * 2
     TRAIN_START = RANK * (TRAIN_LEN // WORLD_SIZE)
     TRAIN_END = (RANK + 1) * (TRAIN_LEN // WORLD_SIZE)
     indices: list[int] = train_metadata[TRAIN_START:TRAIN_END]['index'].unique().tolist()
@@ -212,8 +187,6 @@ def main():
     )
 
     freqs = FREQS.to(RANK)
-    inv_freqs = INV_FREQS.to(RANK)
-    inv_freqs /= inv_freqs.sum()
     weights = log(freqs.max() / freqs)
 
     if RANK == 0:
@@ -225,9 +198,9 @@ def main():
     if RANK == 0:
         print(weights)
 
-    loss_module = CrossEntropyLoss(ignore_index = 0,
-                                   weight = weights,
-                                   label_smoothing = 0.1)
+    loss_module = DiceCELoss(include_background = False,
+                             weight = weights,
+                             label_smoothing = 0.1)
     optimizer = ZeroRedundancyOptimizer(model.parameters(),
                                         optimizer_class = AdamW,
                                         lr = LR, weight_decay = 0) # No weight decay with PReLU
@@ -277,7 +250,7 @@ def main():
 
         model.train()
         metrics = loader_loop(RANK, True, train_dataloader,
-                              inv_freqs, model, scaler, loss_module,
+                              model, scaler, loss_module,
                               optimizer, metrics_1, metrics_2)
         
         for i in range(len(metrics)):
@@ -301,7 +274,7 @@ def main():
             
             with no_grad():
                 metrics = loader_loop(RANK, False, eval_dataloader,
-                                      inv_freqs, model, None, loss_module,
+                                      model, None, loss_module,
                                       None, metrics_1, metrics_2)
             
             for i in range(len(metrics)):
