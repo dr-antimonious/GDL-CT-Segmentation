@@ -238,10 +238,6 @@ def main():
         MeanIoU(num_classes = 8, per_class = True, input_format = 'index')]
         ).to(RANK)
 
-    next_decay = T0
-    decay_cycle_len = T0
-    max_lr = LR
-
     if exists(CHECKPOINT):
         LOC = 'cuda:' + str(RANK)
         snapshot = load(CHECKPOINT, map_location = LOC)
@@ -250,13 +246,6 @@ def main():
 
         if RANK == 0:
             print('Resuming training from epoch index=' + str(FIRST))
-
-        if FIRST > next_decay:
-            for e in range(FIRST):
-                if e == next_decay:
-                    max_lr *= DECAY
-                    decay_cycle_len *= TMULT
-                    next_decay += decay_cycle_len
     else:
         FIRST = 0
         if RANK == 0:
@@ -267,13 +256,6 @@ def main():
     for epoch in range(FIRST, EPOCHS):
         scheduler.step(epoch)
 
-        if epoch == next_decay:
-            max_lr *= DECAY
-            for pg in optimizer.param_groups:
-                pg['lr'] = max_lr
-            decay_cycle_len *= TMULT
-            next_decay += decay_cycle_len
-        
         will_validate = PRODUCTION and ((epoch < 15) or \
             ((epoch < 31) and ((epoch - 14) % 2 == 0)) or \
             ((epoch - 30) % 3 == 0))
