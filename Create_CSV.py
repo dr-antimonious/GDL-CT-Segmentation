@@ -1,27 +1,39 @@
 import pandas as pd
 import nibabel.loadsave as nib
+from numpy import floor, ceil
 from random import sample
 from tqdm import tqdm
 
-DIRECTORY = "/home/ubuntu/proj/ImageCHD_dataset/"
-DATASET_INFO_PATH = DIRECTORY + "imageCHD_dataset_info.xlsx"
-SCAN_INFO_PATH = DIRECTORY + "imagechd_dataset_image_info.xlsx"
-CHD_NAMES = ['ASD', 'VSD', 'AVSD', 'ToF', 'TGA', 'CA', 'PA', 'PDA']
+DIRECTORY           = "/home/ubuntu/proj/ImageCHD_dataset/"
+DATASET_INFO_PATH   = DIRECTORY + "imageCHD_dataset_info.xlsx"
+SCAN_INFO_PATH      = DIRECTORY + "imagechd_dataset_image_info.xlsx"
+CHD_NAMES           = ['ASD', 'VSD', 'AVSD', 'ToF', 'TGA', 'CA', 'PA', 'PDA']
+TRAIN_PORTION       = 0.7
+EVAL_PORTION        = 0.2
+TEST_PORTION        = 0.1
+
+def get_counts(data: pd.DataFrame, names: list) -> list[tuple[str, int]]:
+    chd_counts = [int(data[chd].value_counts()[1.0]) for chd in CHD_NAMES]
+    chds = sorted(zip(names, chd_counts), key = lambda x: (x[1], x[0]))
+    print(chds)
+    return chds
 
 def main():
     dataset_info = pd.read_csv(filepath_or_buffer = DIRECTORY + "patient_info.csv")
-
     chd_names = CHD_NAMES
-    chd_counts = [int(dataset_info[chd].value_counts()[1.0]) for chd in CHD_NAMES]
-    chds = sorted(zip(chd_names, chd_counts), key = lambda x: (x[1], x[0]))
-    print(chds)
 
-    for chd, _ in chds[:-1]:
+    chds = get_counts(dataset_info, chd_names)
+    for chd, count in chds[:-1]:
+        train_count = floor(count * TRAIN_PORTION)
+        eval_count = ceil(count * EVAL_PORTION)
+        test_count = ceil(count * TEST_PORTION)
+        print('train: ' + str(train_count) + ', eval: ' + str(eval_count) \
+              + ', test: ' + str(test_count) + ', should be sum: ' + str(count))
+
         dataset_info.drop(dataset_info.loc[dataset_info[chd] == 1].index, inplace = True)
         chd_names.remove(chd)
-        chd_counts = [int(dataset_info[chd].value_counts()[1.0]) for chd in CHD_NAMES]
-        chds = sorted(zip(chd_names, chd_counts), key = lambda x: (x[1], x[0]))
-        print(chds)
+        
+        chds = get_counts(dataset_info, chd_names)
 
 if __name__ == '__main__':
     main()
