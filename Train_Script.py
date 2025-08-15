@@ -1,6 +1,6 @@
 from torch import __version__ as torch_version
 from torch import max as torchmax
-from torch import Tensor, FloatTensor, save, load, no_grad, sum, zeros, log1p
+from torch import Tensor, FloatTensor, save, load, no_grad, sum, zeros, log
 from torch.amp.autocast_mode import autocast
 from torch.amp.grad_scaler import GradScaler
 from torch.cuda import is_available, device_count, set_device, empty_cache
@@ -209,7 +209,7 @@ def main():
                          46453197., 110663064.,
                          143205882., 190230471.,
                          82210947., 67981614.]).to(RANK)
-    weights = log1p(1.0 / freqs)
+    weights = log(freqs.max() / freqs)
     if RANK == 0:
         print(weights)
     weights /= weights.sum()
