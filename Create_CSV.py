@@ -52,7 +52,7 @@ def main():
     mask = [(x.date() - y.date()).days > 10 * 365 \
             for x, y in zip(dataset_info['AcquisitionDate'], dataset_info['PatientBirthDate'])] 
     dataset_info.drop(dataset_info.loc[mask].index, inplace = True)
-    print(type(dataset_info['AcquisitionDate'].loc[0]))
+    print(dataset_info)
     chd_names = ["ASD", "VSD", "AVSD", "ToF", "DORV", "CA", "PA", "DSVC", "PDA"]
 
     chds = get_counts(dataset_info, chd_names)
