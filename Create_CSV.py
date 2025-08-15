@@ -54,7 +54,7 @@ def main():
             for x, y in zip(dataset_info['AcquisitionDate'], dataset_info['PatientBirthDate'])] 
     dataset_info.drop(dataset_info.loc[mask].index, inplace = True)
     chd_names = ["ASD", "VSD", "AVSD", "TGA", "ToF", "CA", "PA", "PDA",
-                "DSVC", "DORV", "APVC", "DAA"]
+                "DSVC", "DORV", "APVC", "DAA", "IAA", "PAS", "AAH", "CAT"]
 
     chds = get_counts(dataset_info, chd_names)
     print(chds)
@@ -63,7 +63,7 @@ def main():
                                        DIRECTORY + 'imagechd_dataset_image_info.xlsx')
     dataset_info.drop(dataset_info.loc[mask].index, inplace = True)
     chd_names = ["ASD", "VSD", "AVSD", "TGA", "ToF", "CA", "PA", "PDA",
-                "DSVC", "DORV", "APVC", "DAA"]
+                "DSVC", "DORV", "APVC", "DAA", "IAA", "PAS", "AAH", "CAT"]
 
     for chd_split in chds.keys():
         mask = dataset_info[chd_split] == 1
