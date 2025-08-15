@@ -9,7 +9,7 @@ SCAN_INFO_PATH = DIRECTORY + "imagechd_dataset_image_info.xlsx"
 DATASET_INFO = pd.read_csv(filepath_or_buffer = DIRECTORY + "patient_info.csv")
 
 CHDS = ['ASD', 'VSD', 'AVSD', 'ToF', 'TGA', 'CA', 'PA', 'PDA']
-CHD_COUNTS = [DATASET_INFO[chd].value_counts()[1.0] for chd in CHDS]
+CHD_COUNTS = [int(DATASET_INFO[chd].value_counts()[1.0]) for chd in CHDS]
 print(CHD_COUNTS)
 
 print(sorted(zip(CHDS, CHD_COUNTS), key = lambda x: x[1]))
