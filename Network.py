@@ -1,4 +1,4 @@
-from torch import tensor, softmax
+from torch import tensor, softmax, float32
 from torch.amp.autocast_mode import autocast
 from torch.nn import Module, PReLU, Linear, ModuleList, ParameterList, Parameter
 from torch_geometric.nn import SSGConv, BatchNorm, Sequential
@@ -42,10 +42,10 @@ class CHD_GNN(Module):
         ])
 
         self.params = ParameterList([
-            Parameter(tensor([0.5])),
-            Parameter(tensor([0.5])),
-            Parameter(tensor([0.0, 0.0, 0.0])),
-            Parameter(tensor([0.5]))
+            Parameter(tensor(0.5, dtype = float32)),
+            Parameter(tensor(0.5, dtype = float32)),
+            Parameter(tensor([0.0, 0.0, 0.0], dtype = float32)),
+            Parameter(tensor(0.5, dtype = float32))
         ])
 
     @autocast('cuda')
@@ -54,28 +54,27 @@ class CHD_GNN(Module):
             Arguments:
                 x (Tensor): Source coronary-CT image as a graph.
                 adj_matrix (Tensor): Adjacency matrix of the x graph.
-                device: Second GPU.
             
             Returns:
                 out (Tensor): Segmentation result as a graph.
         """
-        x1 = self.layers[0].forward(x = x)
-        x2 = self.layers[1].forward(x = x1)
-        x3 = self.layers[2].forward(
+        x1 = self.layers[0](x = x)
+        x2 = self.layers[1](x = x1)
+        x3 = self.layers[2](
             x = x2,
             edge_index = adj_matrix
         )
 
         alpha = self.params[0].float()
         res = (1 - alpha) * x2.float() + alpha * x3.float()
-        x4 = self.layers[3].forward(
+        x4 = self.layers[3](
             x = res.to(x3.dtype),
             edge_index = adj_matrix
         )
 
         alpha = self.params[1].float()
         res = (1 - alpha) * x3.float() + alpha * x4.float()
-        x5 = self.layers[4].forward(
+        x5 = self.layers[4](
             x = res.to(x4.dtype),
             edge_index = adj_matrix
         )
@@ -83,10 +82,10 @@ class CHD_GNN(Module):
         alpha = self.params[2].float()
         w = softmax(alpha, dim = 0)
         res = w[0] * x2.float() + w[1] * x4.float() + w[2] * x5.float()
-        x6 = self.layers[5].forward(x = res.to(x5.dtype))
+        x6 = self.layers[5](x = res.to(x5.dtype))
 
         alpha = self.params[3].float()
         res = (1 - alpha) * x1.float() + alpha * x6.float()
-        x7 = self.layers[6].forward(res.to(x6.dtype))
+        x7 = self.layers[6](res.to(x6.dtype))
 
         return x7

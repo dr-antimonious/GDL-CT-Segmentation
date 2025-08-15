@@ -1,6 +1,6 @@
 from torch import __version__ as torch_version
 from torch import max as torchmax
-from torch import Tensor, FloatTensor, save, load, no_grad, sum
+from torch import Tensor, FloatTensor, save, load, no_grad, sum, zeros
 from torch.amp.autocast_mode import autocast
 from torch.amp.grad_scaler import GradScaler
 from torch.cuda import is_available, device_count, set_device, empty_cache
@@ -26,7 +26,7 @@ from torchmetrics.segmentation.dice import DiceScore
 from torchmetrics.segmentation.mean_iou import MeanIoU
 
 from gc import collect
-from numpy import array, unique, empty
+from numpy import array, unique
 from os import environ, getenv
 from os.path import exists
 from pandas import read_csv, DataFrame
@@ -81,8 +81,8 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader,
                 model: DistributedDataParallel, scaler: GradScaler|None,
                 loss_module: CrossEntropyLoss, optimizer: ZeroRedundancyOptimizer|None,
                 metrics_1: MetricCollection, metrics_2: MetricCollection) -> dict:
-    metrics = {M_LOOP[i]: FloatTensor([0.0]).to(rank) for i in range(3)}
-    metrics.update([(M_LOOP[i], FloatTensor(empty(8)).to(rank)) \
+    metrics = {M_LOOP[i]: zeros(1, device = rank) for i in range(3)}
+    metrics.update([(M_LOOP[i], zeros(8, device = rank)) \
                     for i in range(3, len(M_LOOP))])
 
     for batch in tqdm(dataloader, disable = rank != 0):
@@ -90,28 +90,25 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader,
             assert optimizer is not None
             optimizer.zero_grad(set_to_none = True)
 
+        batch = batch.to(rank, non_blocking = True)
         with autocast(device_type='cuda'):
-            batch.x = batch.x.to(rank, non_blocking = True)
-            batch.edge_index = batch.edge_index.to(rank, non_blocking = True)
-            batch.y = batch.y.to(rank, non_blocking = True)
-            
             preds = model(x = batch.x, adj_matrix = batch.edge_index)
             _, pred_labels = torchmax(preds, dim = 1)
 
-            cel = loss_module(preds, batch.y)
-            dl = Dice(preds, batch.y)
-            loss = 0.5 * cel + 0.5 * dl
-            m1 = metrics_1.forward(preds, batch.y)
-            m2 = metrics_2.forward(pred_labels.unsqueeze(0), batch.y.unsqueeze(0))
+            cel = loss_module(preds, batch.y).float()
+            dl = Dice(preds, batch.y).float()
+            loss = (0.5 * cel + 0.5 * dl).float()
+            m1 = metrics_1(preds, batch.y)
+            m2 = metrics_2(pred_labels.unsqueeze(0), batch.y.unsqueeze(0))
 
-            metrics['ce_loss'] += cel.item()
-            metrics['dice_loss'] += dl.item()
-            metrics['loss'] += loss.item()
+            metrics['ce_loss'] += cel.detach().float().item()
+            metrics['dice_loss'] += dl.detach().float().item()
+            metrics['loss'] += loss.detach().float().item()
 
             for i in range(len(m1)):
-                metrics[M_LOOP[i+3]] += m1[M1_NAMES[i]]
+                metrics[M_LOOP[i+3]] += m1[M1_NAMES[i]].detach().float()
             for i in range(len(m2)):
-                metrics[M_LOOP[i+6]] += m2[M2_NAMES[i]]
+                metrics[M_LOOP[i+6]] += m2[M2_NAMES[i]].detach().float()
             
         if train:
             assert scaler is not None
