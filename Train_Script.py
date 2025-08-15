@@ -1,6 +1,6 @@
 from torch import __version__ as torch_version
 from torch import max as torchmax
-from torch import Tensor, FloatTensor, save, load, no_grad, sum, zeros
+from torch import Tensor, FloatTensor, save, load, no_grad, sum, zeros, log1p
 from torch.amp.autocast_mode import autocast
 from torch.amp.grad_scaler import GradScaler
 from torch.cuda import is_available, device_count, set_device, empty_cache
@@ -81,6 +81,9 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader,
                 model: DistributedDataParallel, scaler: GradScaler|None,
                 loss_module: CrossEntropyLoss, optimizer: ZeroRedundancyOptimizer|None,
                 metrics_1: MetricCollection, metrics_2: MetricCollection) -> dict:
+    metrics_1.reset()
+    metrics_2.reset()
+    
     metrics = {M_LOOP[i]: zeros(1, device = rank) for i in range(3)}
     metrics.update([(M_LOOP[i], zeros(8, device = rank)) \
                     for i in range(3, len(M_LOOP))])
@@ -202,14 +205,11 @@ def main():
         [RANK]
     )
 
-    weights = FloatTensor([11108352000./10420281390.,
-                           11108352000./47325435.,
-                           11108352000./46453197.,
-                           11108352000./110663064.,
-                           11108352000./143205882.,
-                           11108352000./190230471.,
-                           11108352000./82210947.,
-                           11108352000./67981614.]).to(RANK)
+    freqs = FloatTensor([10420281390., 47325435.,
+                         46453197., 110663064.,
+                         143205882., 190230471.,
+                         82210947., 67981614.]).to(RANK)
+    weights = log1p(1.0 / freqs)
     weights /= weights.sum()
     loss_module = CrossEntropyLoss(ignore_index = 0,
                                    weight = weights)
