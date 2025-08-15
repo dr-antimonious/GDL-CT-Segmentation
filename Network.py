@@ -36,12 +36,14 @@ class CHD_GNN(Module):
             self.linear_block(32, 64),
             self.ssgc_block(64, 64, 0.05, 3),
             self.ssgc_block(64, 64, 0.05, 4),
+            self.ssgc_block(64, 64, 0.05, 4),
             self.ssgc_block(64, 64, 0.05, 3),
             self.linear_block(64, 32),
             Linear(32, 8)
         ])
 
         self.params = ParameterList([
+            Parameter(tensor(0.5, dtype = float32)),
             Parameter(tensor(0.5, dtype = float32)),
             Parameter(tensor(0.5, dtype = float32)),
             Parameter(tensor([0.0, 0.0, 0.0], dtype = float32)),
@@ -80,12 +82,19 @@ class CHD_GNN(Module):
         )
 
         alpha = self.params[2].float()
-        w = softmax(alpha, dim = 0)
-        res = w[0] * x2.float() + w[1] * x4.float() + w[2] * x5.float()
-        x6 = self.layers[5](x = res.to(x5.dtype))
+        res = (1 - alpha) * x4.float() + alpha * x5.float()
+        x6 = self.layers[5](
+            x = res.to(x5.dtype),
+            edge_index = adj_matrix
+        )
 
         alpha = self.params[3].float()
-        res = (1 - alpha) * x1.float() + alpha * x6.float()
-        x7 = self.layers[6](res.to(x6.dtype))
+        w = softmax(alpha, dim = 0)
+        res = w[0] * x2.float() + w[1] * x5.float() + w[2] * x6.float()
+        x7 = self.layers[6](x = res.to(x6.dtype))
 
-        return x7
+        alpha = self.params[4].float()
+        res = (1 - alpha) * x1.float() + alpha * x7.float()
+        x8 = self.layers[7](res.to(x7.dtype))
+
+        return x8
