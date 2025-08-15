@@ -5,6 +5,8 @@ from numpy import floor, ceil
 from random import sample
 from tqdm import tqdm
 
+from Excel_Processing import ProcessSpreadsheets
+
 DIRECTORY           = "/home/ubuntu/proj/ImageCHD_dataset/"
 DATASET_INFO_PATH   = DIRECTORY + "imageCHD_dataset_info.xlsx"
 SCAN_INFO_PATH      = DIRECTORY + "imagechd_dataset_image_info.xlsx"
@@ -19,12 +21,12 @@ def get_counts(data: pd.DataFrame, names: list) -> dict[str, dict[str, int]]:
 
     chd, count = chds[0]
     train_count = int(floor(count * TRAIN_PORTION))
-
-    if chd == 'PDA':
-        train_count -= 1
-
     eval_count = int(ceil(count * EVAL_PORTION))
     test_count = int(ceil(count * TEST_PORTION))
+
+    if (train_count + eval_count + test_count) > count:
+        train_count -= 1
+
     print('chd: ' + chd + ', train: ' + str(train_count) \
            + ', eval: ' + str(eval_count) + ', test: ' + str(test_count) \
             + ', should be sum: ' + str(count))
@@ -45,19 +47,21 @@ def get_counts(data: pd.DataFrame, names: list) -> dict[str, dict[str, int]]:
     return result
 
 def main():
-    dataset_info = pd.read_csv(filepath_or_buffer = DIRECTORY + "patient_info.csv")
+    dataset_info = ProcessSpreadsheets(DIRECTORY + 'imageCHD_dataset_info.xlsx',
+                                       DIRECTORY + 'imagechd_dataset_image_info.xlsx')
     mask = [(datetime.strptime(x, '%Y-%m-%d').date() - datetime.strptime(y, '%Y-%m-%d').date()).days > 10 * 365 \
             for x, y in zip(dataset_info['AcquisitionDate'], dataset_info['PatientBirthDate'])] 
     dataset_info.drop(dataset_info.loc[mask].index, inplace = True)
     print(type(dataset_info['AcquisitionDate'].loc[0]))
-    chd_names = ['ASD', 'VSD', 'AVSD', 'ToF', 'TGA', 'CA', 'PA', 'PDA']
+    chd_names = ["ASD", "VSD", "AVSD", "ToF", "DORV", "CA", "PA", "DSVC", "PDA"]
 
     chds = get_counts(dataset_info, chd_names)
     print(chds)
     
-    dataset_info = pd.read_csv(filepath_or_buffer = DIRECTORY + "patient_info.csv")
+    dataset_info = ProcessSpreadsheets(DIRECTORY + 'imageCHD_dataset_info.xlsx',
+                                       DIRECTORY + 'imagechd_dataset_image_info.xlsx')
     dataset_info.drop(dataset_info.loc[mask].index, inplace = True)
-    chd_names = ['ASD', 'VSD', 'AVSD', 'ToF', 'TGA', 'CA', 'PA', 'PDA']
+    chd_names = ["ASD", "VSD", "AVSD", "ToF", "DORV", "CA", "PA", "DSVC", "PDA"]
 
     for chd_split in chds.keys():
         mask = dataset_info[chd_split] == 1
