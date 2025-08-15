@@ -13,8 +13,7 @@ class CHD_GNN(Module):
         -> Sequential:
         return Sequential('x', [
             (Linear(in_channels, out_channels), 'x -> x'),
-            (BatchNorm(out_channels,
-                       track_running_stats = False), 'x -> x'),
+            (BatchNorm(out_channels), 'x -> x'),
             (PReLU(out_channels), 'x -> x')
         ])
     
@@ -25,8 +24,7 @@ class CHD_GNN(Module):
                      out_channels,
                      alpha, K),
                      'x, edge_index -> x'),
-            (BatchNorm(out_channels,
-                       track_running_stats = False), 'x -> x'),
+            (BatchNorm(out_channels), 'x -> x'),
             (PReLU(out_channels), 'x -> x')
         ])
     
