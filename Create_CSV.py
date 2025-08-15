@@ -12,28 +12,38 @@ TRAIN_PORTION       = 0.7
 EVAL_PORTION        = 0.2
 TEST_PORTION        = 0.1
 
-def get_counts(data: pd.DataFrame, names: list) -> list[tuple[str, int]]:
+def get_counts(data: pd.DataFrame, names: list) -> dict[str, int]:
     chd_counts = [int(data[chd].value_counts()[1.0]) for chd in CHD_NAMES]
     chds = sorted(zip(names, chd_counts), key = lambda x: (x[1], x[0]))
     print(chds)
-    return chds
+
+    chd, count = chds[0]
+    train_count = floor(count * TRAIN_PORTION)
+    eval_count = ceil(count * EVAL_PORTION)
+    test_count = ceil(count * TEST_PORTION)
+    print('chd: ' + chd + ', train: ' + str(train_count) \
+           + ', eval: ' + str(eval_count) + ', test: ' + str(test_count) \
+            + ', should be sum: ' + str(count))
+
+    data.drop(data.loc[data[chd] == 1].index, inplace = True)
+    names.remove(chd)
+
+    result = {
+        chd + '_train': train_count,
+        chd + '_eval': eval_count,
+        chd + '_test': test_count
+    }
+
+    if len(names) == 0:
+        result.update(get_counts(data, names))
+    return result
 
 def main():
     dataset_info = pd.read_csv(filepath_or_buffer = DIRECTORY + "patient_info.csv")
     chd_names = CHD_NAMES
 
     chds = get_counts(dataset_info, chd_names)
-    for chd, count in chds:
-        train_count = floor(count * TRAIN_PORTION)
-        eval_count = ceil(count * EVAL_PORTION)
-        test_count = ceil(count * TEST_PORTION)
-        print('train: ' + str(train_count) + ', eval: ' + str(eval_count) \
-              + ', test: ' + str(test_count) + ', should be sum: ' + str(count))
-
-        dataset_info.drop(dataset_info.loc[dataset_info[chd] == 1].index, inplace = True)
-        chd_names.remove(chd)
-        
-        chds = get_counts(dataset_info, chd_names)
+    print(chds)
 
 if __name__ == '__main__':
     main()
