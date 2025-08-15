@@ -24,9 +24,6 @@ def get_counts(data: pd.DataFrame, names: list) -> dict[str, dict[str, int]]:
     eval_count = int(ceil(count * EVAL_PORTION))
     test_count = int(ceil(count * TEST_PORTION))
 
-    if (train_count + eval_count + test_count) > count:
-        train_count -= 1
-
     print('chd: ' + chd + ', train: ' + str(train_count) \
            + ', eval: ' + str(eval_count) + ', test: ' + str(test_count) \
             + ', should be sum: ' + str(count))
