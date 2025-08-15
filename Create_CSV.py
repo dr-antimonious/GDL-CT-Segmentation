@@ -7,13 +7,12 @@ from tqdm import tqdm
 DIRECTORY           = "/home/ubuntu/proj/ImageCHD_dataset/"
 DATASET_INFO_PATH   = DIRECTORY + "imageCHD_dataset_info.xlsx"
 SCAN_INFO_PATH      = DIRECTORY + "imagechd_dataset_image_info.xlsx"
-CHD_NAMES           = ['ASD', 'VSD', 'AVSD', 'ToF', 'TGA', 'CA', 'PA', 'PDA']
 TRAIN_PORTION       = 0.7
 EVAL_PORTION        = 0.2
 TEST_PORTION        = 0.1
 
 def get_counts(data: pd.DataFrame, names: list) -> dict[str, dict[str, int]]:
-    chd_counts = [int(data[chd].value_counts()[1.0]) for chd in CHD_NAMES]
+    chd_counts = [int(data[chd].value_counts()[1.0]) for chd in names]
     chds = sorted(zip(names, chd_counts), key = lambda x: (x[1], x[0]))
     print(chds)
 
@@ -46,13 +45,13 @@ def get_counts(data: pd.DataFrame, names: list) -> dict[str, dict[str, int]]:
 
 def main():
     dataset_info = pd.read_csv(filepath_or_buffer = DIRECTORY + "patient_info.csv")
-    chd_names = CHD_NAMES
+    chd_names = ['ASD', 'VSD', 'AVSD', 'ToF', 'TGA', 'CA', 'PA', 'PDA']
 
     chds = get_counts(dataset_info, chd_names)
     print(chds)
     
     dataset_info = pd.read_csv(filepath_or_buffer = DIRECTORY + "patient_info.csv")
-    chd_names = CHD_NAMES
+    chd_names = ['ASD', 'VSD', 'AVSD', 'ToF', 'TGA', 'CA', 'PA', 'PDA']
 
     print(dataset_info)
     print(chd_names)
