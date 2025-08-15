@@ -54,9 +54,10 @@ def main():
     chd_names = ['ASD', 'VSD', 'AVSD', 'ToF', 'TGA', 'CA', 'PA', 'PDA']
 
     for chd_split in chds.keys():
-        print(chd_split)
-        chd_info = dataset_info[dataset_info[chd_split] == 1]
+        mask = dataset_info[chd_split] == 1
+        chd_info = dataset_info[mask]
         print(chd_info)
+        dataset_info.drop(dataset_info.loc[mask].index, inplace = True)
 
 if __name__ == '__main__':
     main()
