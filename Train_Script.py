@@ -209,7 +209,7 @@ def main():
                          46453197., 110663064.,
                          143205882., 190230471.,
                          82210947., 67981614.]).to(RANK)
-    weights = log(freqs.max() / freqs)
+    weights = log((freqs.max() + 1) / freqs)
     if RANK == 0:
         print(weights)
     weights /= weights.sum()
