@@ -23,7 +23,7 @@ def main():
     chd_names = CHD_NAMES
 
     chds = get_counts(dataset_info, chd_names)
-    for chd, count in chds[:-1]:
+    for chd, count in chds:
         train_count = floor(count * TRAIN_PORTION)
         eval_count = ceil(count * EVAL_PORTION)
         test_count = ceil(count * TEST_PORTION)
