@@ -48,8 +48,12 @@ def main():
     dataset_info = pd.read_csv(filepath_or_buffer = DIRECTORY + "patient_info.csv")
     chd_names = CHD_NAMES
 
-    chds = get_counts(dataset_info.copy(deep = True), chd_names.copy())
+    chds = get_counts(dataset_info, chd_names)
     print(chds)
+    
+    dataset_info = pd.read_csv(filepath_or_buffer = DIRECTORY + "patient_info.csv")
+    chd_names = CHD_NAMES
+
     print(dataset_info)
     print(chd_names)
 
