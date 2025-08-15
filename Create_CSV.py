@@ -11,7 +11,7 @@ CHDS = ['ASD', 'VSD', 'AVSD', 'ToF', 'TGA', 'CA', 'PA', 'PDA']
 dataset_info = pd.read_csv(filepath_or_buffer = DIRECTORY + "patient_info.csv")
 
 for chd in CHDS:
-    print(dataset_info[chd].value_counts())
+    print(dataset_info[chd].value_counts()[1.0])
 
 # axial_count = [nib.load("C:\\Users\\leotu\\Downloads\\ImageCHD_dataset\\ImageCHD_dataset\\ct_" \
 #                          + str(x) + "_image.nii.gz") \
