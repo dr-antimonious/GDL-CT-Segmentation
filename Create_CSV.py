@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 import pandas as pd
 import nibabel.loadsave as nib
 from numpy import floor, ceil
@@ -46,8 +46,9 @@ def get_counts(data: pd.DataFrame, names: list) -> dict[str, dict[str, int]]:
 
 def main():
     dataset_info = pd.read_csv(filepath_or_buffer = DIRECTORY + "patient_info.csv")
-    # mask = (dataset_info['AcquisitionDate'] - dataset_info['PatientBirthDate']) > 
-    # dataset_info.drop(dataset_info.loc[])
+    mask = [(datetime.strptime(x, '%Y-%m-%d').date() - datetime.strptime(y, '%Y-%m-%d').date()).days > 10 * 365 \
+            for x, y in zip(dataset_info['AcquisitionDate'], dataset_info['PatientBirthDate'])] 
+    dataset_info.drop(dataset_info.loc[mask].index, inplace = True)
     print(type(dataset_info['AcquisitionDate'].loc[0]))
     chd_names = ['ASD', 'VSD', 'AVSD', 'ToF', 'TGA', 'CA', 'PA', 'PDA']
 
@@ -55,6 +56,7 @@ def main():
     print(chds)
     
     dataset_info = pd.read_csv(filepath_or_buffer = DIRECTORY + "patient_info.csv")
+    dataset_info.drop(dataset_info.loc[mask].index, inplace = True)
     chd_names = ['ASD', 'VSD', 'AVSD', 'ToF', 'TGA', 'CA', 'PA', 'PDA']
 
     for chd_split in chds.keys():
