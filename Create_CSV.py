@@ -54,6 +54,7 @@ def main():
     chd_names = ['ASD', 'VSD', 'AVSD', 'ToF', 'TGA', 'CA', 'PA', 'PDA']
 
     for chd, _ in chds:
+        print(chd)
         chd_info = dataset_info[dataset_info[chd] == 1]
         print(chd_info)
 
