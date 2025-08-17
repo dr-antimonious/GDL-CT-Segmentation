@@ -25,8 +25,10 @@ def ProcessSpreadsheets(dataset_info_path, scan_info_path) -> pd.DataFrame:
         .drop("level_0", axis = 1)
 
     nan_cols = ["ASD", "VSD", "AVSD", "ToF", "PA", "PDA", "APVC", "DAA"]
+    dataset_info['COUNT'] = 0
     for col in nan_cols:
         mask = dataset_info[dataset_info[col] != 1].index
         dataset_info.loc[mask, col] = 0
+        dataset_info['COUNT'] += dataset_info[col]
     
     return dataset_info

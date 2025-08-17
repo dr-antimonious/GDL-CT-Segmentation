@@ -43,8 +43,9 @@ def Generate_All_Adj_Matrices(n_cols_arr: np.ndarray) -> bool:
     try:
         for n_cols in tqdm(n_cols_arr):
             adj_mat = Generate_Adj_Matrix(n_cols = n_cols)
-            np.save(file = "C:\\Users\\leotu\\OneDrive\\Documents\\ImageCHD_dataset\\ADJACENCY\\Adj_Mat_" \
+            np.save(file = "C:\\Users\\leotu\\OneDrive\\Documents\\ImageCHD_dataset\\NEW_ADJACENCY\\Adj_Mat_" \
                     + str(n_cols) + ".npy", arr = adj_mat)
+            print(str(n_cols) + " saved")
         return True
     except Exception as e:
         print(e)

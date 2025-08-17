@@ -1,6 +1,6 @@
 from torch import __version__ as torch_version
 from torch import max as torchmax
-from torch import FloatTensor, save, load, no_grad, zeros, log
+from torch import FloatTensor, Tensor, save, load, no_grad, zeros, cat
 from torch.amp.autocast_mode import autocast
 from torch.amp.grad_scaler import GradScaler
 from torch.cuda import is_available, device_count, set_device, empty_cache
@@ -8,7 +8,6 @@ from torch.distributed import init_process_group, destroy_process_group, \
     all_reduce, ReduceOp, barrier
 from torch.distributed.optim import ZeroRedundancyOptimizer
 from torch.nn.parallel import DistributedDataParallel
-from torch.nn import SyncBatchNorm
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, \
     LinearLR, SequentialLR
@@ -24,8 +23,9 @@ from torchmetrics.collections import MetricCollection
 from torchmetrics.segmentation.dice import DiceScore
 from torchmetrics.segmentation.mean_iou import MeanIoU
 
-from gc import collect
 from monai.losses.dice import DiceCELoss
+
+from gc import collect
 from numpy import array, unique
 from os import environ, getenv
 from os.path import exists
@@ -43,10 +43,10 @@ MIN_LR          = 1e-5
 WARM_FACT       = 0.1
 WARM_ITER       = 5
 SMOOTH          = 1e-6
-BATCH_SIZE      = 24
+BATCH_SIZE      = 32
 NUM_WORKERS     = 4
 PREFETCH_FACTOR = 2
-EPOCHS          = 300
+EPOCHS          = 250
 WORLD_SIZE      = device_count()
 M_NAMES         = ['Accuracy ', 'Recall ', 'Precision ',
                    'F1-score ', 'IoU-score ']
@@ -66,15 +66,16 @@ assert PRODUCTION_STR is not None
 assert DIRECTORY is not None
 PRODUCTION      = PRODUCTION_STR.lower() == 'true'
 
-FREQS = FloatTensor([10420281390., 47325435.,
-                     46453197., 110663064.,
-                     143205882., 190230471.,
-                     82210947., 67981614.])
+FREQS = FloatTensor([7610724117.0, 35496879.0,
+                     37714647.0, 83133666.0,
+                     105607395.0, 144954300.0,
+                     57576912.0, 53353236.0])
 
 def loader_loop(rank: int, train: bool, dataloader: DataLoader,
                 model: DistributedDataParallel, scaler: GradScaler|None,
                 loss_module: DiceCELoss, optimizer: ZeroRedundancyOptimizer|None,
-                metrics_1: MetricCollection, metrics_2: MetricCollection) -> dict:
+                metrics_1: MetricCollection, metrics_2: MetricCollection) -> \
+                    dict[str, Tensor]:
     metrics_1.reset()
     metrics_2.reset()
     
@@ -89,7 +90,8 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader,
 
         batch = batch.to(rank, non_blocking = True)
         with autocast(device_type='cuda'):
-            preds = model(x = batch.x, adj_matrix = batch.edge_index)
+            preds = model(x = batch.x, edges = batch.edge_index,
+                          batch = batch.batch, b_size = batch.num_graphs)
             _, pred_labels = torchmax(preds, dim = 1)
             
             m1 = metrics_1(preds, batch.y)
@@ -114,14 +116,16 @@ def loader_loop(rank: int, train: bool, dataloader: DataLoader,
         
     return metrics
 
-def print_metrics(epoch: int, metrics: dict, writer: SummaryWriter, train: bool):
+def print_metrics(epoch: int, metrics: dict,
+                  writer: SummaryWriter, train: bool):
     print('----------TRAINING METRICS----------' if train else \
           '------------EVAL METRICS------------')
 
     PHASE = 'train' if train else 'eval'
 
     print('Loss: ', metrics[M_LOOP[0]].item())
-    writer.add_scalar(PHASE + '_loss', metrics[M_LOOP[0]].item(), global_step = epoch + 1)
+    writer.add_scalar(PHASE + '_loss', metrics[M_LOOP[0]].item(),
+                      global_step = epoch + 1)
 
     for m in range(1, len(metrics)):
         vals = metrics[M_LOOP[m]]
@@ -142,17 +146,20 @@ def main():
         print('GPU count: ', device_count())
     
     adjacency = __Load_Adjacency__(DIRECTORY + 'ADJACENCY/')
-    train_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'train_dataset_info.csv')
+    train_metadata = read_csv(
+        filepath_or_buffer = DIRECTORY + 'train_dataset_info.csv')
 
     TRAIN_LEN = len(train_metadata) if PRODUCTION else \
         BATCH_SIZE * WORLD_SIZE * NUM_WORKERS * PREFETCH_FACTOR * 2
     TRAIN_START = RANK * (TRAIN_LEN // WORLD_SIZE)
     TRAIN_END = (RANK + 1) * (TRAIN_LEN // WORLD_SIZE)
-    indices: list[int] = train_metadata[TRAIN_START:TRAIN_END]['index'].unique().tolist()
+    indices: list[int] = train_metadata[TRAIN_START:TRAIN_END]['index'] \
+        .unique().tolist()
 
     eval_dataset = None
     if PRODUCTION:
-        eval_metadata = read_csv(filepath_or_buffer = DIRECTORY + 'eval_dataset_info.csv')
+        eval_metadata = read_csv(
+            filepath_or_buffer = DIRECTORY + 'eval_dataset_info.csv')
         EVAL_START = RANK * (len(eval_metadata) // WORLD_SIZE)
         EVAL_END = (RANK + 1) * (len(eval_metadata) // WORLD_SIZE)
         indices += eval_metadata[EVAL_START:EVAL_END]['index'].unique().tolist()
@@ -184,36 +191,36 @@ def main():
                                      prefetch_factor = PREFETCH_FACTOR,
                                      drop_last = True)
 
-    model = DistributedDataParallel(
-        SyncBatchNorm.convert_sync_batchnorm(
-            CHD_GNN().to(RANK)
-        ),
-        [RANK]
-    )
+    model = DistributedDataParallel(CHD_GNN().to(RANK), [RANK])
 
     freqs = FREQS.to(RANK)
-    weights = log(freqs.max() / freqs)
+    weights = (freqs[1:].max() / freqs[1:]) * 5.25
+    weights = cat([FloatTensor(1.0).to(RANK), weights])
 
     if RANK == 0:
         print(weights)
 
-    weights[0] += 0.25
     weights /= weights.sum()
 
     if RANK == 0:
         print(weights)
 
     loss_module = DiceCELoss(include_background = False,
-                             label_smoothing = 0.1,
+                             label_smoothing = 0.0,
                              to_onehot_y = True,
                              weight = weights,
                              softmax = True)
+    
     optimizer = ZeroRedundancyOptimizer(model.parameters(),
                                         optimizer_class = AdamW,
-                                        lr = LR, weight_decay = 0) # No weight decay with PReLU
-    scheduler = CosineAnnealingWarmRestarts(optimizer, T_0 = T0,
-                                            T_mult = TMULT,
-                                            eta_min = MIN_LR)
+                                        lr = LR, weight_decay = 0)
+    scheduler1 = CosineAnnealingWarmRestarts(optimizer, T_0 = T0,
+                                             T_mult = TMULT,
+                                             eta_min = MIN_LR)
+    scheduler2 = LinearLR(optimizer, start_factor = WARM_FACT,
+                          total_iters = 5)
+    scheduler = SequentialLR(optimizer, milestones = [5],
+                             schedulers = [scheduler2, scheduler1])
     scaler = GradScaler()
 
     if RANK == 0:
@@ -223,13 +230,13 @@ def main():
         Accuracy(task = 'multiclass', average = None, num_classes = 8),
         Precision(task = 'multiclass', average = None, num_classes = 8),
         Recall(task = 'multiclass', average = None, num_classes = 8)],
-        ).to(RANK)
+    ).to(RANK)
     metrics_2 = MetricCollection([
         DiceScore(num_classes = 8, average = None,
                   input_format = 'index', nan_score = 0.0),
         MeanIoU(num_classes = 8, per_class = True,
                 input_format = 'index', nan_score = 0.0)]
-        ).to(RANK)
+    ).to(RANK)
 
     if exists(CHECKPOINT):
         LOC = 'cuda:' + str(RANK)
@@ -249,13 +256,14 @@ def main():
     for epoch in range(FIRST, EPOCHS):
         scheduler.step(epoch)
 
-        will_validate = PRODUCTION and ((epoch < 15) or \
-            ((epoch < 31) and ((epoch - 14) % 2 == 0)) or \
-            ((epoch - 30) % 3 == 0))
+        will_validate = PRODUCTION and ((epoch < 20) or \
+            ((epoch < 36) and ((epoch - 19) % 2 == 0)) or \
+            ((epoch - 35) % 3 == 0))
 
         if RANK == 0:
             print('--------------------------------------------------')
-            print('Epoch ', epoch + 1)
+            print('Epoch: ', epoch + 1)
+            print('Learning rate: ', scheduler.get_last_lr())
 
         model.train()
         metrics = loader_loop(RANK, True, train_dataloader,
@@ -268,7 +276,8 @@ def main():
         barrier()
         handles = []
         for i in range(len(metrics)):
-            handles.append(all_reduce(metrics[M_LOOP[i]].detach(),
+            metrics[M_LOOP[i]] = metrics[M_LOOP[i]].detach()
+            handles.append(all_reduce(metrics[M_LOOP[i]],
                                       op = ReduceOp.AVG, async_op = True))
         
         for h in handles:
@@ -292,7 +301,8 @@ def main():
             barrier()
             handles = []
             for i in range(len(metrics)):
-                handles.append(all_reduce(metrics[M_LOOP[i]].detach(),
+                metrics[M_LOOP[i]] = metrics[M_LOOP[i]].detach()
+                handles.append(all_reduce(metrics[M_LOOP[i]],
                                           op = ReduceOp.AVG, async_op = True))
             
             for h in handles:
