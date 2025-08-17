@@ -38,7 +38,7 @@ class CHD_Dataset(Dataset):
   
   @property
   def sample_indices(self):
-    return self.metadata['index'].unique()
+    return self.metadata['index'].sort_values().unique()
 
   @property
   def raw_file_names(self):

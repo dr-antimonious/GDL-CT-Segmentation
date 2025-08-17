@@ -154,7 +154,7 @@ def main():
     TRAIN_START = RANK * (TRAIN_LEN // WORLD_SIZE)
     TRAIN_END = (RANK + 1) * (TRAIN_LEN // WORLD_SIZE)
     indices: list[int] = train_metadata[TRAIN_START:TRAIN_END]['index'] \
-        .unique().tolist()
+        .sort_values().unique().tolist()
 
     eval_dataset = None
     if PRODUCTION:
@@ -162,7 +162,7 @@ def main():
             filepath_or_buffer = DIRECTORY + 'eval_dataset_info.csv')
         EVAL_START = RANK * (len(eval_metadata) // WORLD_SIZE)
         EVAL_END = (RANK + 1) * (len(eval_metadata) // WORLD_SIZE)
-        indices += eval_metadata[EVAL_START:EVAL_END]['index'].unique().tolist()
+        indices += eval_metadata[EVAL_START:EVAL_END]['index'].sort_values().unique().tolist()
 
     uniques = unique(array(indices))
     images = [load_nifti(DIRECTORY + 'IMAGES/', idx) for idx in uniques]
