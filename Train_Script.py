@@ -232,10 +232,8 @@ def main():
         Recall(task = 'multiclass', average = None, num_classes = 8)],
     ).to(RANK)
     metrics_2 = MetricCollection([
-        DiceScore(num_classes = 8, average = None,
-                  input_format = 'index', nan_score = 0.0),
-        MeanIoU(num_classes = 8, per_class = True,
-                input_format = 'index', nan_score = 0.0)]
+        DiceScore(num_classes = 8, average = None, input_format = 'index'),
+        MeanIoU(num_classes = 8, per_class = True, input_format = 'index')]
     ).to(RANK)
 
     if exists(CHECKPOINT):
