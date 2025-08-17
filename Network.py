@@ -14,7 +14,7 @@ class CHD_GNN(Module):
         -> Sequential:
         return Sequential('x, b, b_size', [
             (Linear(in_channels, out_channels), 'x -> x'),
-            (MeanSubtractionNorm(out_channels), 'x, b, b_size -> x'),
+            (MeanSubtractionNorm(), 'x, b, b_size -> x'),
             (PReLU(out_channels), 'x -> x')
         ])
     
@@ -25,7 +25,7 @@ class CHD_GNN(Module):
                      out_channels,
                      alpha, K),
                      'x, edges -> x'),
-            (MeanSubtractionNorm(out_channels), 'x, b, b_size -> x'),
+            (MeanSubtractionNorm(), 'x, b, b_size -> x'),
             (PReLU(out_channels), 'x -> x')
         ])
     
