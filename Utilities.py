@@ -64,6 +64,7 @@ class CHD_Dataset(Dataset):
     return len(self.metadata)
   
   def get(self, idx):
+    print("get ", idx)
     image, label = Extract_And_Convert(
       im = self.images[self.idxs.index(self.metadata['index'].iloc[idx])],
       la = self.labels[self.idxs.index(self.metadata['index'].iloc[idx])],

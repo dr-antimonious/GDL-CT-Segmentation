@@ -63,6 +63,7 @@ def Extract_And_Convert(im, la, plane_type: str, plane_index: int) \
         Returns:
             out (tuple[numpy.ndarray, numpy.ndarray]): Source coronary-CT image and ground truth segmentation as graphs.
     """
+    print("Extract_And_Convert ", plane_index, plane_type)
     match plane_type:
         case 'A': # Axial plane
             image = im[:, :, plane_index]
