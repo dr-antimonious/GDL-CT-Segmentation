@@ -252,7 +252,7 @@ def main():
     print(f"[Rank {RANK}] Dataset len: {len(train_dataset)}")
 
     for epoch in range(FIRST, EPOCHS):
-        scheduler.step(epoch)
+        scheduler.step(epoch = epoch)
 
         will_validate = PRODUCTION and ((epoch < 20) or \
             ((epoch < 36) and ((epoch - 19) % 2 == 0)) or \
