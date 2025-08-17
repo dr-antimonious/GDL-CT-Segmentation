@@ -195,7 +195,7 @@ def main():
 
     freqs = FREQS.to(RANK)
     weights = (freqs[1:].max() / freqs[1:]) * 5.25
-    weights = cat([FloatTensor(1.0).to(RANK), weights])
+    weights = cat([FloatTensor([1.0]).to(RANK), weights])
 
     if RANK == 0:
         print(weights)
