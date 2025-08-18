@@ -51,7 +51,7 @@ def Convert_To_Graph(image: ndarray, label: ndarray) -> tuple[ndarray, ndarray]:
     lab = lab.flatten()
     return (img, lab)
 
-def Extract_And_Convert(im, la, idx, plane_type: str, plane_index: int) \
+def Extract_And_Convert(im, la, plane_type: str, plane_index: int) \
                         -> tuple[ndarray, ndarray]:
     r"""
         Arguments:
@@ -63,7 +63,6 @@ def Extract_And_Convert(im, la, idx, plane_type: str, plane_index: int) \
         Returns:
             out (tuple[numpy.ndarray, numpy.ndarray]): Source coronary-CT image and ground truth segmentation as graphs.
     """
-    print("Extract_And_Convert ", idx, plane_index, plane_type)
     match plane_type:
         case 'A': # Axial plane
             image = im[:, :, plane_index]
