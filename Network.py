@@ -2,7 +2,7 @@ from torch import tensor, softmax, float32
 from torch.amp.autocast_mode import autocast
 from torch.nn import Module, PReLU, Linear, ModuleList, ParameterList, Parameter
 
-from torch_geometric.nn import SSGConv, MeanSubtractionNorm, Sequential, BatchNorm
+from torch_geometric.nn import SSGConv, PairNorm, Sequential
 
 class CHD_GNN(Module):
     r"""
@@ -14,7 +14,7 @@ class CHD_GNN(Module):
         -> Sequential:
         return Sequential('x, b, b_size', [
             (Linear(in_channels, out_channels), 'x -> x'),
-            (BatchNorm(out_channels), 'x -> x'),
+            (PairNorm(), 'x, b, b_size -> x'),
             (PReLU(out_channels), 'x -> x')
         ])
     
@@ -25,7 +25,7 @@ class CHD_GNN(Module):
                      out_channels,
                      alpha, K),
                      'x, edges -> x'),
-            (BatchNorm(out_channels), 'x -> x'),
+            (PairNorm(), 'x, b, b_size -> x'),
             (PReLU(out_channels), 'x -> x')
         ])
     
