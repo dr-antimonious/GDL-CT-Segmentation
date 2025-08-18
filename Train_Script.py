@@ -330,6 +330,7 @@ def main():
         
         collect()
         empty_cache()
+        scheduler.step()
     
     destroy_process_group()
         
