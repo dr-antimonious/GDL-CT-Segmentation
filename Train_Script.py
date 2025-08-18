@@ -153,37 +153,40 @@ def main():
         BATCH_SIZE * WORLD_SIZE * NUM_WORKERS * PREFETCH_FACTOR * 2
     TRAIN_START = RANK * (TRAIN_LEN // WORLD_SIZE)
     TRAIN_END = (RANK + 1) * (TRAIN_LEN // WORLD_SIZE)
-    indices: list[int] = train_metadata[TRAIN_START:TRAIN_END]['index'] \
+    train_indices: list[int] = train_metadata[TRAIN_START:TRAIN_END]['index'] \
         .unique().tolist()
-
-    eval_dataset = None
-    if PRODUCTION:
-        eval_metadata = read_csv(
-            filepath_or_buffer = DIRECTORY + 'eval_dataset_info.csv')
-        EVAL_START = RANK * (len(eval_metadata) // WORLD_SIZE)
-        EVAL_END = (RANK + 1) * (len(eval_metadata) // WORLD_SIZE)
-        indices += eval_metadata[EVAL_START:EVAL_END]['index'].unique().tolist()
-
-    uniques = unique(array(indices))
-    images = [load_nifti(DIRECTORY + 'IMAGES/', idx) for idx in uniques]
-    labels = [load_nifti(DIRECTORY + 'LABELS/', idx) for idx in uniques]
+    
+    train_uniques = unique(array(train_indices))
+    train_images = [load_nifti(DIRECTORY + 'IMAGES/', idx) for idx in train_uniques]
+    train_labels = [load_nifti(DIRECTORY + 'LABELS/', idx) for idx in train_uniques]
 
     train_metadata = DataFrame(train_metadata[TRAIN_START:TRAIN_END])
     train_dataset = CHD_Dataset(metadata = train_metadata,
                                 adjacency = adjacency, root = DIRECTORY,
-                                images = images, labels = labels)
+                                images = train_images, labels = train_labels)
     train_dataloader = DataLoader(dataset = train_dataset,
                                   batch_size = BATCH_SIZE,
                                   num_workers = NUM_WORKERS,
                                   pin_memory = True, drop_last = True,
                                   prefetch_factor = PREFETCH_FACTOR,
                                   shuffle = True)
-    
+
+    eval_dataset = None
+    eval_dataloader = None
     if PRODUCTION:
+        eval_metadata = read_csv(
+            filepath_or_buffer = DIRECTORY + 'eval_dataset_info.csv')
+        EVAL_START = RANK * (len(eval_metadata) // WORLD_SIZE)
+        EVAL_END = (RANK + 1) * (len(eval_metadata) // WORLD_SIZE)
+        eval_indices = eval_metadata[EVAL_START:EVAL_END]['index'] \
+            .unique().tolist()
+        eval_uniques = unique(array(eval_indices))
+        eval_images = [load_nifti(DIRECTORY + 'IMAGES/', idx) for idx in eval_uniques]
+        eval_labels = [load_nifti(DIRECTORY + 'LABELS/', idx) for idx in eval_uniques]
         eval_metadata = DataFrame(eval_metadata[EVAL_START:EVAL_END])
         eval_dataset = CHD_Dataset(metadata = eval_metadata,
                                    adjacency = adjacency, root = DIRECTORY,
-                                   images = images, labels = labels)
+                                   images = eval_images, labels = eval_labels)
         eval_dataloader = DataLoader(dataset = eval_dataset,
                                      batch_size = BATCH_SIZE,
                                      num_workers = NUM_WORKERS,
@@ -223,6 +226,7 @@ def main():
                              schedulers = [scheduler2, scheduler1])
     scaler = GradScaler()
 
+    writer = None
     if RANK == 0:
         writer = SummaryWriter('GNN_Experiment')
     
@@ -283,12 +287,14 @@ def main():
             h.wait()
 
         if RANK == 0:
+            assert writer is not None
             print_metrics(epoch, metrics, writer, True)
 
         if will_validate:
             model.eval()
             
             with no_grad():
+                assert eval_dataloader is not None
                 metrics = loader_loop(RANK, False, eval_dataloader,
                                       model, None, loss_module,
                                       None, metrics_1, metrics_2)
@@ -308,9 +314,11 @@ def main():
                 h.wait()
 
             if RANK == 0:
+                assert writer is not None
                 print_metrics(epoch, metrics, writer, False)
 
         if RANK == 0:
+            assert writer is not None
             checkpoint_path = 'MODELS/gnn_' + str(epoch + 1) + '.checkpoint'
             snapshot = {
                 'MODEL_STATE': model.module.state_dict(),
