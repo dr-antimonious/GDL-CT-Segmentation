@@ -87,10 +87,10 @@ def main():
             m = metrics(preds, batch.y)
             iou, dice, valid = compute_iou_dice(pred_labels, batch.y, 8)
 
-            tot_iou[valid] += iou.tolist()
-            tot_dice[valid] += dice.tolist()
-            tot_acc[valid] += m['MulticlassAccuracy'].tolist()[valid]
-            tot_prec[valid] += m['MulticlassPrecision'].tolist()[valid]
+            tot_iou[valid] += iou.detach().tolist()
+            tot_dice[valid] += dice.detach().tolist()
+            tot_acc[valid] += m['MulticlassAccuracy'].detach().tolist()[valid]
+            tot_prec[valid] += m['MulticlassPrecision'].detach().tolist()[valid]
             tot_valid += valid
 
             print(tot_valid)
@@ -114,7 +114,7 @@ def main():
             "Mean_Acc": (tot_acc * WEIGHTS).sum(),
             "Mean_Prec": (tot_prec * WEIGHTS).sum()
         })])
-        
+
         break
     
     save = DataFrame(results)
