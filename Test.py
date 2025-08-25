@@ -19,7 +19,7 @@ MODEL_DIRECTORY = "/home/ubuntu/proj/GDL-CT-Segmentation/MODELS/"
 DIRECTORY = "/home/ubuntu/proj/ImageCHD_dataset/"
 
 def main():
-    dev = device("cuda:0")
+    dev = device("cpu")
     model = CHD_GNN().to(dev)
     checkpoint = load(MODEL_DIRECTORY + "gnn_90.checkpoint",
                       map_location = dev)["MODEL_STATE"]
