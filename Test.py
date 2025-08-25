@@ -21,7 +21,8 @@ FREQS = array([7610724117.0, 35496879.0,
                37714647.0, 83133666.0,
                105607395.0, 144954300.0,
                57576912.0, 53353236.0])
-WEIGHTS = FloatTensor(FREQS.sum() / FREQS).to(DEVICE)
+W_STEP = FREQS.sum() / FREQS
+WEIGHTS = FloatTensor(W_STEP / W_STEP.sum()).to(DEVICE)
 
 def compute_iou_dice(pred, target, num_classes):
     pred_oh = one_hot(pred, num_classes = num_classes).bool()
