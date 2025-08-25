@@ -42,7 +42,8 @@ def main():
                                root = DIRECTORY, images = test_images,
                                labels = test_labels)
     test_dataloader = DataLoader(dataset = test_dataset, batch_size = 1,
-                                 drop_last = False, shuffle = False)
+                                 drop_last = False, shuffle = False,
+                                 num_workers = 8, prefetch_factor = 8)
     
     metrics_1 = MetricCollection([
         Accuracy(task = 'multiclass', average = None, num_classes = 8),
@@ -62,9 +63,6 @@ def main():
         
         m1 = metrics_1(preds, batch.y)
         m2 = metrics_2(pred_labels.unsqueeze(0), batch.y.unsqueeze(0))
-        
-        print(m1)
-        print(m2)
         
 if __name__ == '__main__':
     main()
