@@ -92,12 +92,6 @@ def main():
             tot_acc[valid] += m['MulticlassAccuracy'].cpu().numpy()[valid]
             tot_prec[valid] += m['MulticlassPrecision'].cpu().numpy()[valid]
             tot_valid += valid
-
-            print(tot_valid)
-            print(tot_iou)
-            print(tot_dice)
-            print(tot_acc)
-            print(tot_prec)
         
         tot_iou /= tot_valid
         tot_dice /= tot_valid
