@@ -33,8 +33,8 @@ def compute_iou_dice(pred, target, num_classes):
     valid = union > 0
     iou = tp / (union + 1e-7) * WEIGHTS
     dice = 2 * tp / (2 * tp + fp + fn + 1e-7) * WEIGHTS
-    mean_iou = iou[valid].mean().item()
-    mean_dice = dice[valid].mean().item()
+    mean_iou = iou[valid].mean().item() / WEIGHTS[valid].sum().item()
+    mean_dice = dice[valid].mean().item() / WEIGHTS[valid].sum().item()
     return mean_iou, mean_dice
 
 def main():
