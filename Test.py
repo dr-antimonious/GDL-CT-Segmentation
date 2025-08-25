@@ -21,21 +21,21 @@ FREQS = array([7610724117.0, 35496879.0,
                37714647.0, 83133666.0,
                105607395.0, 144954300.0,
                57576912.0, 53353236.0])
-W_STEP = FREQS.sum() / FREQS
-WEIGHTS = FloatTensor(W_STEP / W_STEP.sum()).to(DEVICE)
+WEIGHTS = FloatTensor(FREQS.sum() / FREQS).to(DEVICE)
 
 def compute_iou_dice(pred, target, num_classes):
     pred_oh = one_hot(pred, num_classes = num_classes).bool()
     target_oh = one_hot(target, num_classes = num_classes).bool()
-    tp = (pred_oh & target_oh).sum().float()
-    fp = (pred_oh & ~target_oh).sum().float()
-    fn = (~pred_oh & target_oh).sum().float()
+    tp = (pred_oh & target_oh).sum(dim = 0).float()
+    fp = (pred_oh & ~target_oh).sum(dim = 0).float()
+    fn = (~pred_oh & target_oh).sum(dim = 0).float()
     union = tp + fp + fn
     valid = union > 0
-    iou = tp / (union + 1e-7) * WEIGHTS
-    dice = 2 * tp / (2 * tp + fp + fn + 1e-7) * WEIGHTS
-    mean_iou = iou[valid].mean().item() / WEIGHTS[valid].sum().item()
-    mean_dice = dice[valid].mean().item() / WEIGHTS[valid].sum().item()
+    weights = WEIGHTS[valid] / WEIGHTS[valid].sum().item()
+    iou = tp[valid] / (union[valid] + 1e-7) * weights
+    dice = 2 * tp[valid] / (2 * tp[valid] + fp[valid] + fn[valid] + 1e-7) * weights
+    mean_iou = iou.sum().item()
+    mean_dice = dice.sum().item()
     return mean_iou, mean_dice
 
 def main():
