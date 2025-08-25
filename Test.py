@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from numpy import unique, array
 from pandas import read_csv
-from torch import load, device, max
+from torch import load, device, max, FloatTensor
 from torch.nn.functional import one_hot
 from torch_geometric.loader import DataLoader
 from tqdm import tqdm
@@ -16,12 +16,12 @@ from Utilities import __Load_Adjacency__, load_nifti, CHD_Dataset
 MODEL_DIRECTORY = "/home/ubuntu/proj/GDL-CT-Segmentation/MODELS/"
 DIRECTORY = "/home/ubuntu/proj/ImageCHD_dataset/"
 NUM_CLASSES = 8
-
+DEVICE = "cuda:0"
 FREQS = array([7610724117.0, 35496879.0,
                37714647.0, 83133666.0,
                105607395.0, 144954300.0,
                57576912.0, 53353236.0])
-WEIGHTS = FREQS.sum() / FREQS
+WEIGHTS = FloatTensor(FREQS.sum() / FREQS).to(DEVICE)
 
 def compute_iou_dice(pred, target, num_classes):
     pred_oh = one_hot(pred, num_classes = num_classes).bool()
@@ -39,7 +39,7 @@ def compute_iou_dice(pred, target, num_classes):
 
 def main():
     print(WEIGHTS)
-    dev = device("cuda:0")
+    dev = device(DEVICE)
     model = CHD_GNN().to(dev)
     checkpoint = load(MODEL_DIRECTORY + "gnn_90.checkpoint",
                       map_location = dev)["MODEL_STATE"]
