@@ -17,6 +17,12 @@ MODEL_DIRECTORY = "/home/ubuntu/proj/GDL-CT-Segmentation/MODELS/"
 DIRECTORY = "/home/ubuntu/proj/ImageCHD_dataset/"
 NUM_CLASSES = 8
 
+FREQS = array([7610724117.0, 35496879.0,
+               37714647.0, 83133666.0,
+               105607395.0, 144954300.0,
+               57576912.0, 53353236.0])
+WEIGHTS = FREQS.sum() / FREQS
+
 def compute_iou_dice(pred, target, num_classes):
     pred_oh = one_hot(pred, num_classes = num_classes).bool()
     target_oh = one_hot(target, num_classes = num_classes).bool()
@@ -25,13 +31,14 @@ def compute_iou_dice(pred, target, num_classes):
     fn = (~pred_oh & target_oh).sum().float()
     union = tp + fp + fn
     valid = union > 0
-    iou = tp / (union + 1e-7)
-    dice = 2 * tp / (2 * tp + fp + fn + 1e-7)
+    iou = tp / (union + 1e-7) * WEIGHTS
+    dice = 2 * tp / (2 * tp + fp + fn + 1e-7) * WEIGHTS
     mean_iou = iou[valid].mean().item()
     mean_dice = dice[valid].mean().item()
     return mean_iou, mean_dice
 
 def main():
+    print(WEIGHTS)
     dev = device("cuda:0")
     model = CHD_GNN().to(dev)
     checkpoint = load(MODEL_DIRECTORY + "gnn_90.checkpoint",
