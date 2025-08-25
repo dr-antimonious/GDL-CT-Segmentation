@@ -37,8 +37,8 @@ def compute_iou_dice(pred, target, num_classes):
 
 def main():
     dev = device(DEVICE)
-    epochs = list(range(35, 46))
-    epochs.extend(range(75, 86))
+    epochs = list(range(35, 51))
+    epochs.extend(range(70, 86))
     results = {}
 
     adjacency = __Load_Adjacency__(DIRECTORY + 'ADJACENCY/')
@@ -108,8 +108,6 @@ def main():
             "Mean_Acc": (tot_acc * WEIGHTS).sum(),
             "Mean_Prec": (tot_prec * WEIGHTS).sum()
         })])
-
-        break
     
     save = DataFrame(results)
     save.to_csv(MODEL_DIRECTORY + "results.csv")
