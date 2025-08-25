@@ -30,7 +30,7 @@ def compute_iou_dice(pred, target, num_classes):
     fp = (pred_oh & ~target_oh).sum(dim = 0).float()
     fn = (~pred_oh & target_oh).sum(dim = 0).float()
     union = tp + fp + fn
-    valid = union > 0
+    valid = (union > 0).cpu().numpy()
     iou = tp[valid] / (union[valid] + 1e-7)
     dice = 2 * tp[valid] / (2 * tp[valid] + fp[valid] + fn[valid] + 1e-7)
     return iou, dice, valid
@@ -87,10 +87,10 @@ def main():
             m = metrics(preds, batch.y)
             iou, dice, valid = compute_iou_dice(pred_labels, batch.y, 8)
 
-            tot_iou[valid] += iou.detach().tolist()
-            tot_dice[valid] += dice.detach().tolist()
-            tot_acc[valid] += m['MulticlassAccuracy'].detach().tolist()[valid]
-            tot_prec[valid] += m['MulticlassPrecision'].detach().tolist()[valid]
+            tot_iou[valid] += iou.cpu().numpy()
+            tot_dice[valid] += dice.cpu().numpy()
+            tot_acc[valid] += m['MulticlassAccuracy'].cpu().numpy()[valid]
+            tot_prec[valid] += m['MulticlassPrecision'].cpu().numpy()[valid]
             tot_valid += valid
 
             print(tot_valid)
