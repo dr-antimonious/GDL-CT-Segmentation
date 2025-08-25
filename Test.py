@@ -43,7 +43,8 @@ def main():
                                labels = test_labels)
     test_dataloader = DataLoader(dataset = test_dataset, batch_size = 1,
                                  drop_last = False, shuffle = False,
-                                 num_workers = 8, prefetch_factor = 8)
+                                 num_workers = 32, prefetch_factor = 8,
+                                 pin_memory = True)
     
     metrics_1 = MetricCollection([
         Accuracy(task = 'multiclass', average = None, num_classes = 8),
