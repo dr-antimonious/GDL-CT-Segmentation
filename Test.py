@@ -60,7 +60,7 @@ def main():
         axes[i][0].axis('off')
 
         axes[i][1].imshow(Convert_To_Image(data.y, data.adj_count), cmap = 'tab20')
-        axes[i][1].set_title("Izvorni presjek")
+        axes[i][1].set_title("Ground truth")
         axes[i][1].axis('off')
 
         for j, epoch in enumerate(epochs):
