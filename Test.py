@@ -55,7 +55,7 @@ def main():
         data = test_dataset.get(example)
         data = data.to(DEVICE, non_blocking = True)
 
-        axes[i][0].imshow(Convert_To_Image(data.x[:, :, 0], data.adj_count), cmap = 'gray')
+        axes[i][0].imshow(Convert_To_Image(data.x, data.adj_count)[:, :, 0], cmap = 'gray')
         axes[i][0].set_title("Izvorni presjek")
         axes[i][0].axis('off')
 
